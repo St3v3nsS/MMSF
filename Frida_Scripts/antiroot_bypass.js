@@ -1,11 +1,12 @@
-/*
-Original author: Daniele Linguaglossa
-28/07/2021 -    Edited by Simone Quatrini
-                Code amended to correctly run on the latest frida version
-        		Added controls to exclude Magisk Manager
-*/
 
 Java.perform(function() {
+
+    console.log("[*] Hooking calls to System.exit");
+    var exitClass = Java.use("java.lang.System");
+    exitClass.exit.implementation = function(){
+        console.log("[*] System.exit called");
+    }
+
     var RootPackages = ["com.noshufou.android.su", "com.noshufou.android.su.elite", "eu.chainfire.supersu",
         "com.koushikdutta.superuser", "com.thirdparty.superuser", "com.yellowes.su", "com.koushikdutta.rommanager",
         "com.koushikdutta.rommanager.license", "com.dimonvideo.luckypatcher", "com.chelpus.lackypatch",
@@ -254,24 +255,6 @@ Java.perform(function() {
         }
     });
 
-    /*
-
-    TO IMPLEMENT:
-
-    Exec Family
-
-    int execl(const char *path, const char *arg0, ..., const char *argn, (char *)0);
-    int execle(const char *path, const char *arg0, ..., const char *argn, (char *)0, char *const envp[]);
-    int execlp(const char *file, const char *arg0, ..., const char *argn, (char *)0);
-    int execlpe(const char *file, const char *arg0, ..., const char *argn, (char *)0, char *const envp[]);
-    int execv(const char *path, char *const argv[]);
-    int execve(const char *path, char *const argv[], char *const envp[]);
-    int execvp(const char *file, char *const argv[]);
-    int execvpe(const char *file, char *const argv[], char *const envp[]);
-
-    */
-
-
     BufferedReader.readLine.overload('boolean').implementation = function() {
         var text = this.readLine.overload('boolean').call(this);
         if (text === null) {
@@ -356,12 +339,6 @@ Java.perform(function() {
             return true;
         }
     }
-
-
-    console.log("[*] Hooking calls to System.exit");
-    exitClass = Java.use("java.lang.System");
-    exitClass.exit.implementation = function(){
-        console.log("[*] System.exit called");
-    }
         
 });
+

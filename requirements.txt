@@ -1,3 +1,5 @@
 reflutter
 objection
 frida-tools
+bs4
+click==8.0

@@ -17,7 +17,7 @@ class Commands(Enum):
     COMMAND_MANIFEST={"cmd": f"run app.package.manifest ", "display": Fore.GREEN + "[+] Gathering manifest data ...", "fname": "AndroidManifest.xml"}    
 
     START_ACTIVITY={"cmd": f"run app.activity.start --component ", "display": Fore.YELLOW + "[+] Starting the activity ..."}
-    SEND_BROADCAST={"cmd": f"run app.broadcast.send --component", "display": Fore.YELLOW + "[+] Sending the broadcast message ..."}
+    SEND_BROADCAST={"cmd": f"run app.broadcast.send", "display": Fore.YELLOW + "[+] Sending the broadcast message ..."}
     QUERY_CONTENT={"cmd": f"run app.provider.query ", "display": Fore.YELLOW + "[+] Querying the content provider ..."}
     FIND_APP={"cmd": f"run app.package.list", "display": Fore.YELLOW + "[+] Finding the application details ..."}
     LAUNCH_DEEPLINK={"cmd": "run app.activity.start --action android.intent.action.VIEW --data-uri ", "display": Fore.YELLOW + "[+] Launching deeplink attack ..."}
