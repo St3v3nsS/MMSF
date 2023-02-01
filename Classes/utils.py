@@ -1,6 +1,6 @@
 from colorama import Fore
 from Classes.constants import Constants
-
+import subprocess
 
 def display(commands):
     print("Available data: " + " ".join(commands))
@@ -50,7 +50,7 @@ def print_show_table(params):
         if type(data["value"]) == list:
             value = "[" + " ,".join(data["value"]) + "]"
         l1 = len(data["name"])
-        l2 = len(value)
+        l2 = len(str(value))
         l3 = len(data["description"])
         if  l1 > max_len_param:
             max_len_param = l1
@@ -79,5 +79,10 @@ def print_show_table(params):
         if type(data["value"]) == list:
             value = "[" + ", ".join(data["value"]) + "]"
         
-        print(data['name']  + " " * (max_len_param - len(data['name'])) + Constants.DELIM.value + required.upper() + " " * (max_len_required - len(required)) + Constants.DELIM.value + value  + " "* (max_len_value - len(value)) + Constants.DELIM.value + data["description"]+ " "*max_len_desc)
+        print(data['name']  + " " * (max_len_param - len(data['name'])) + Constants.DELIM.value + required.upper() + " " * (max_len_required - len(required)) + Constants.DELIM.value + str(value)  + " "* (max_len_value - len(str(value))) + Constants.DELIM.value + data["description"]+ " "*max_len_desc)
     print(dash * total_len)
+
+def check_alive_devices():
+    cmd = f'{Constants.ADB.value} devices -l'
+    p = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.decode().splitlines()
+    return len(p)>2

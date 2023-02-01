@@ -1,7 +1,10 @@
+#!/usr/bin/python3.8
+
 from json import loads
 import os
 import subprocess
 from subprocess import DEVNULL, PIPE
+import sys
 from bs4 import BeautifulSoup
 from colorama import Fore
 import requests
@@ -10,11 +13,16 @@ from Classes.constants import Constants
 
 class Installer:
     def __init__(self, forced=False) -> None:
-        self.packages = ['apktool', 'apksigner', 'java', 'drozer', 'reflutter', 'objection', 'frida']
+        self.packages = ['apktool', 'apksigner', 'java', 'drozer', 'reflutter', 'objection', 'frida', 'abe']
         self._forced = forced
-        if not self._is_sudo():
-            print(Fore.RED + '[-] sudo required!'  + Fore.RESET)
-            quit()
+
+    @property
+    def forced(self):
+        return self._forced
+
+    @forced.setter
+    def forced(self, forced):
+        self._forced = forced
 
     def _is_sudo(self):
         if os.getuid() == 0:
@@ -22,6 +30,9 @@ class Installer:
         return False
 
     def install_packages(self):
+        if not self._is_sudo():
+            print(Fore.RED + '[-] sudo required!'  + Fore.RESET)
+            quit()
         for package in self.packages:
             self._install(package)
 
@@ -39,7 +50,10 @@ class Installer:
         elif package == "objection":
             self._install_objection()
         elif package == "frida":
-            self._install_frida()
+            self._install_frida_server()
+            self._install_frida_client()
+        elif package == "abe":
+            self._install_abe()
 
     def _check_installed(self, cmd):
         try:
@@ -94,12 +108,25 @@ class Installer:
             cmd = "python3 -m pip install --upgrade objection"
             subprocess.run(cmd.split(), stderr=DEVNULL, stdout=DEVNULL)
 
-    def _install_frida(self):
+    def _check_frida_server(self):
+        p = subprocess.run([Constants.ADB.value, 'shell', 'ls /tmp/frida-server'], capture_output=True)
+        if "No such file" in p.stderr.decode() or "No such file" in p.stdout.decode():
+            return False
+        return True
+
+    def _install_frida_client(self):
         installed = self._check_installed('frida')
-        frida_path = os.path.join(Constants.DIR_UTILS_PATH.value, 'frida-server')
         if not installed or self._forced:
+            pass
+#            install_frida_client()
+
+    def _install_frida_server(self):
+        installed_server = self._check_frida_server()
+        frida_path = os.path.join(Constants.DIR_UTILS_PATH.value, 'frida-server')
+        if not installed_server or self._forced:
             try:
                 abi = subprocess.run([Constants.ADB.value, 'shell', 'getprop ro.product.cpu.abi'], stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()[0]
+                print(abi)
             except IndexError as e:
                 print(Fore.RED + '[-] Device not running. Power on the device first... Exitting...' + Fore.RESET)
                 quit()
@@ -121,6 +148,52 @@ class Installer:
             subprocess.run([Constants.ADB.value, 'push', frida_path, '/tmp/frida-server'], stderr=DEVNULL, stdout=DEVNULL)
             subprocess.run([Constants.ADB.value, 'shell', 'chmod +x /tmp/frida-server'], stderr=DEVNULL, stdout=DEVNULL)
 
+    def _install_abe(self):
+        installed = True
+        if self.forced or not installed:
+            url = "https://github.com/nelenkov/android-backup-extractor/releases/"
+            page = requests.get(url)
+            soup = BeautifulSoup(page.content, "html.parser")
+            classes = soup.find_all("a", class_="Link--primary")
+            latest_ver = ""
+            for class_ in classes:
+                if class_.text.startswith("master-"):
+                    latest_ver = class_.text.split(":")[0]
+                    print(Fore.GREEN + "[+] Downloading abe.jar... " + Fore.RESET)
+                    print(os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar"))
+                    new_url = f"https://github.com/nelenkov/android-backup-extractor/releases/download/{latest_ver}/abe.jar"
+                    open(os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar"), "wb").write(requests.get(new_url).content)
+                    break
+
 if __name__ == "__main__":
     installer = Installer()
-    installer.install_packages()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "apktool":
+            installer.forced = True
+            installer._install_apktool()
+        elif sys.argv[1] == "apksigner":
+            installer.forced = True
+            installer._install_apksigner()
+        elif sys.argv[1] == "java":
+            installer.forced = True
+            installer._install_java()
+        elif sys.argv[1] == "drozer":
+            installer.forced = True
+            installer._install_drozer()
+        elif sys.argv[1] == "reflutter":
+            installer.forced = True
+            installer._install_reflutter()
+        elif sys.argv[1] == "objection":
+            installer.forced = True
+            installer._install_objection()
+        elif sys.argv[1] == "frida_client":
+            installer.forced = True
+            installer._install_frida_client()
+        elif sys.argv[1] == "frida_server":
+            installer.forced = True
+            installer._install_frida_server()
+        elif sys.argv[1] == "abe":
+            installer.forced = True
+            installer._install_abe()
+    else:
+        installer.install_packages()

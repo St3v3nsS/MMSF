@@ -20,26 +20,36 @@ class apktool:
     def config(self, data):
         self._config = data
 
-    def __init__(self) -> None:
+    def __init__(self, low_power_mode=False) -> None:
         self._config = {
+            "dir_name": "base",
             "app": "",
             "path": Constants.DIR_PULLED_APKS.value,
             "mode": "d",
-            "apk": "base"
+            "apk": "base",
+            "out_apk": Constants.PATCHED_APK.value,
+            "in_apk": Constants.GENERATED_APK.value,
         }
+        self.low_power_mode = low_power_mode
         self.reconfigure()
         self.__init_java()
         self.__init_apktool()
 
     def __init_apktool(self):
-        print(Fore.BLUE + "[+] apktool is running!" + Fore.RESET)
+        print(Fore.BLUE + "[*] apktool is running!" + Fore.RESET)
 
     def __init_java(self):
-        print(Fore.BLUE + "[+] java is running!" + Fore.RESET)       
+        print(Fore.BLUE + "[*] java is running!" + Fore.RESET)       
 
-    def reconfigure(self):
-        self._patched_apk = os.path.join(self.config["path"], self.config['apk'] + '.apk')
-        self._apk_dir = os.path.join(self.config["path"], self.config["apk"])
+    def reconfigure(self, sign=False):
+        self.config["apk"] = self.config["apk"].rstrip('.apk') + '.apk' 
+        if sign:
+            self._generated_apk = os.path.join(self.config["path"], self.config['in_apk'].rstrip('.apk') + '.apk') if self.config["in_apk"] != 'base' or self.config["path"] != Constants.DIR_PULLED_APKS.value  else Constants.GENERATED_APK.value
+            self._patched_apk = os.path.join(self.config["path"], self.config['out_apk'].rstrip('.apk') + '_patched.apk') if self.config["out_apk"] != 'base' or self.config["path"] != Constants.DIR_PULLED_APKS.value  else Constants.PATCHED_APK.value
+        else:
+            self._generated_apk = os.path.join(self.config["path"], self.config['apk'].rstrip('.apk') + '.apk') if self.config["apk"] != 'base' or self.config["path"] != Constants.DIR_PULLED_APKS.value  else Constants.GENERATED_APK.value
+            self._patched_apk = os.path.join(self.config["path"], self.config['apk'].rstrip('.apk') + '_patched.apk') if self.config["apk"] != 'base' or self.config["path"] != Constants.DIR_PULLED_APKS.value  else Constants.PATCHED_APK.value
+        self._apk_dir = os.path.join(self.config["path"], self.config["dir_name"])
 
     def _decompile_apk(self, path_to_apk="default"):
         apk_path = self._get_default(path_to_apk)
@@ -48,14 +58,15 @@ class apktool:
         p = subprocess.run(cmd_to_run, stderr=PIPE, stdout=DEVNULL)
         self._handle_errors(p)
 
-    def __generate_apk(self):
-        cmd_to_run = ['apktool', 'b', '-o', Constants.TEMP_APK.value, self._apk_dir]
+    def generate_apk(self):
+        self.reconfigure()
+        cmd_to_run = ['apktool', 'b', '-o', self._generated_apk, self._apk_dir]
         p = subprocess.run(cmd_to_run, stderr=PIPE, stdout=DEVNULL)
         self._handle_errors(p)
-        self._patched_apk = os.path.join(self.config["path"], self.config['apk'] + '_patched.apk')
-        print(self._patched_apk)
+        print(Fore.GREEN + '[+] APK generated to: ' + self._generated_apk + Fore.RESET)
 
-    def __sign_apk(self, path_to_apk="default"):
+    def sign_apk(self):
+        self.reconfigure(sign=True)
         pwd = "123456"
         keystore_path = os.path.join(Constants.DIR_UTILS_PATH.value ,'keystore.jsk')
         if not os.path.isfile(keystore_path):
@@ -64,23 +75,27 @@ class apktool:
             self._handle_errors(p)
             
         else:
-            apk_path = self._get_default(path_to_apk)
-            print(apk_path)
-            cmd_to_run = ['apksigner', 'sign', '--ks', keystore_path, '--out', apk_path, Constants.TEMP_APK.value]
+            cmd_to_run = ['apksigner', 'sign', '--ks', keystore_path, '--out', self._patched_apk, self._generated_apk]
             p = subprocess.run(cmd_to_run, input=pwd.encode('UTF-8'), stderr=PIPE, stdout=DEVNULL)
             self._handle_errors(p)
+            print(Fore.GREEN + '[+] APK Signed: ' + self._patched_apk + Fore.RESET)
 
-    def install_apk(self, path_to_apk="default"):
-        apk_path = self._get_default(path_to_apk)
-        print(apk_path)
-        cmd_to_exec = [Constants.ADB.value, 'install', '-r', apk_path]
+    def install_apk(self):
+        self.reconfigure()
+        cmd_to_exec = [Constants.ADB.value, 'install', '-r', self.config["apk"]]
         p = subprocess.run(cmd_to_exec, stderr=PIPE, stdout=DEVNULL)
-        self._handle_errors(p)
+        if "INSTALL_FAILED_TEST_ONLY" in p.stderr.decode():
+            p2 = subprocess.run(cmd_to_exec[:-1] + ['-t'] + [self.config["apk"]], stderr=PIPE, stdout=DEVNULL)
+            self._handle_errors(p2)
+        else:
+            self._handle_errors(p)
 
     def _handle_errors(self, p):
         if p.stderr:
-                print(Fore.RED + '[-] ' + p.stderr.decode() + Fore.RESET)
-
+            print(Fore.RED + '[-] ' + p.stderr.decode() + Fore.RESET)
+        else:
+            print(Fore.GREEN + "[+] Success" + Fore.RESET)
+       
     def _get_default(self, path_to_apk="default"):
         print(self._patched_apk)
         print(path_to_apk)
@@ -138,8 +153,8 @@ class apktool:
         else:
             create()
         print(Fore.GREEN + '[*] Generating apk..' + Fore.RESET)
-        self.__generate_apk()
+        self.generate_apk()
         print(Fore.GREEN + '[*] Signing apk..' + Fore.RESET)
-        self.__sign_apk()
+        self.sign_apk()
         print(Fore.GREEN + '[*] Installing apk..' + Fore.RESET)
         self.install_apk()

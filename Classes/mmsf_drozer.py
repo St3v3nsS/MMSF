@@ -1,4 +1,3 @@
-from ntpath import join
 import os
 import subprocess
 from subprocess import DEVNULL, PIPE
@@ -13,11 +12,8 @@ os.environ.setdefault('PYTHONUNBUFFERED', '1')
 
 class drozer:
     id: str
-    _app_name: str
-    _outdir: str
-    _full_path: str
-    _find_app_query: str
-    _send_type: str
+    _config:dict
+    app_name: str
     _content_provider: dict
     _sniff_data: dict
     _activity: dict
@@ -25,19 +21,11 @@ class drozer:
     # getters
     @property
     def app_name(self):
-        return self._app_name
+        return self.app_name
 
     @property
-    def full_path(self):
-        return self._full_path
-
-    @property
-    def find_app_query(self):
-        return self._find_app_query
-
-    @property
-    def send_type(self):
-        return self._send_type
+    def config(self):
+        return self._config
 
     @property
     def sniff_data(self):
@@ -54,22 +42,18 @@ class drozer:
     # setters
     @app_name.setter
     def app_name(self, app_name):
-        self._app_name = app_name
-        self._outdir = Constants.DIR_SCANS_PATH.value + "/drozer_" + self.app_name + "_results"
-        if self.full_path:
-            self.full_path = self.full_path
+        self._config["app_name"] = app_name
+        self._config["outdir"] = os.path.join(Constants.DIR_SCANS_PATH.value + "drozer_" + self._config["app_name"] + "_results")
+        if self._config["full_path"]:
+            self._config["full_path"] = self._config["full_path"]
 
-    @full_path.setter
-    def full_path(self, outdir):
-        self._full_path = os.path.join(outdir, self._outdir)
+    # @full_path.setter
+    # def full_path(self, outdir):
+        # self._full_path = os.path.join(outdir, self._outdir)
 
-    @find_app_query.setter
-    def find_app_query(self, data):
-        self._find_app_query = data
-
-    @send_type.setter
-    def send_type(self, data):
-        self._send_type = data
+    @config.setter
+    def config(self, data):
+        self.__config = data
 
     @sniff_data.setter
     def sniff_data(self, data):
@@ -83,24 +67,19 @@ class drozer:
     def activity(self, data):
         self._activity = data
 
-    def __repr__(self) -> str:
-        pass
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __eq__(self, __o: object) -> bool:
-        """Compare two class instances."""
-        if __o.id == self.id:
-            return True
-        return False
-
-    def __init__(self) -> None:
+    def __init__(self, low_power_mode=False) -> None:
+        self.low_power_mode = low_power_mode
         self._drozer_cmd = ['drozer', 'console', 'connect']
         self._drozer_devices = ['drozer', 'console', 'devices']
         self._agent_apk_path = os.path.join(Constants.DIR_UTILS_PATH.value, 'drozer-agent.apk')
         self.__init_drozer()
-        self._app_name, self._find_app_query, self._send_type, self._full_path, self._outdir = "", "", "", "", Constants.DIR_SCANS_PATH.value
+        self._config = {
+            "app_name": "",
+            "find_app_query": "",
+            'send_type': "",
+            "full_path": "",
+            "outdir": Constants.DIR_SCANS_PATH.value
+        }
         self._sniff_data = {
             "authority": "",
             "scheme": "",
@@ -125,30 +104,41 @@ class drozer:
             "intent_action": "",
             "mimetype": ""
         }
+        self.app_name = self._config["app_name"]
+
+    def _regenerate(self):
+        self._config["outdir"] = os.path.join(Constants.DIR_SCANS_PATH.value, "drozer_" + self._config["app_name"] + "_results")
+        if self._config["full_path"]:
+            self._config["outdir"] = self._config["full_path"]
+        else:
+            self._config["full_path"] = self._config["outdir"]
 
     def __check_is_running(self):
         try:
             p = subprocess.run(self._drozer_devices, capture_output=True)
-            return p.stdout.decode().splitlines()
+            if 'There was a problem connecting to the drozer Server.' in p.stderr.decode().splitlines():
+                return False
+            return True
         except Exception as e:
             return False
 
     def __start_agent(self):
         try:
-            p = subprocess.run([Constants.ADB.value, 'shell', 'am', 'startservice', '-n', 'com.mwr.dz/.services.ServerService', '-c', 'com.mwr.dz.START_EMBEDDED'], stderr=DEVNULL, stdout=DEVNULL)
+            p = subprocess.run([Constants.ADB.value] + 'shell am start -n com.mwr.dz/.activities.MainActivity'.split(), stderr=PIPE, stdout=PIPE)
+            p = subprocess.run([Constants.ADB.value, 'shell', 'am', 'startservice', '-n', 'com.mwr.dz/.services.ServerService', '-c', 'com.mwr.dz.START_EMBEDDED'], stderr=PIPE, stdout=PIPE)
             return p.stderr.decode().splitlines()
-        except Exception as e:
+        except Exception:
             return ["Not Found"]
 
     def __adb_forward_tcp(self):
         subprocess.run([Constants.ADB.value, 'forward', 'tcp:31415', 'tcp:31415'], stderr=DEVNULL, stdout=DEVNULL)
 
     def __init_drozer(self):
-        
         if not self.__check_is_running():
             print(Fore.RED + "[-] Drozer is not running... Trying to wake the Agent... "+ Fore.RESET)
             stderr = self.__start_agent()
-            if stderr and "Not found" in stderr[0] or 'error' in stderr[0]:
+            print(stderr)
+            if stderr:
                 print(Fore.RED + "[-] Drozer Agent is not installed on the phone. Installing ..." + Fore.RESET)
                 self.__download_agent()
                 self.__install_agent()
@@ -157,7 +147,7 @@ class drozer:
             else:
                 self.__adb_forward_tcp()
         else:
-            print(Fore.BLUE + "[+] Drozer Agent is running!" + Fore.RESET)
+            print(Fore.BLUE + "[*] Drozer Agent is running!" + Fore.RESET)
 
     def __download_agent(self): 
         url = "https://github.com/mwrlabs/drozer/releases/download/2.3.4/drozer-agent-2.3.4.apk"
@@ -176,34 +166,34 @@ class drozer:
     # methods
     # run specific drozer scan
     def _run(self, cmd):
-        command = cmd.value["cmd"] + self._app_name
+        command = cmd.value["cmd"] + self._config["app_name"]
         fname = cmd.value["fname"]
         msg = cmd.value["display"]
 
         final_command = self._drozer_cmd + ['-c', command, '--debug']
         print(msg)
         print(Fore.YELLOW + '[*] Command used ' + " ".join(final_command))
-        with open(self._full_path + '/' + fname, "w") as outfile:
+        with open(os.path.join(self._config["full_path"],fname), "w") as outfile:
             subprocess.run(final_command, stdout=outfile, stderr=DEVNULL)
 
     # run all drozer scans
     def run_all(self):
         print(Fore.BLUE + "[*] Run all scans... This might take a while..."+ Fore.RESET)
-        if not os.path.isdir(self.full_path):
+        if not os.path.isdir(self._config["full_path"]):
             try:
-                os.mkdir(self.full_path)
+                os.mkdir(self._config["full_path"])
             except OSError as e:
                 print(Fore.LIGHTBLUE_EX + '[DEBUG] ' + e + Fore.RESET)
 
         for command in (Commands):
             if command.name.startswith("COMMAND_"):
                 self._run(command)
-        print(Fore.BLUE + '[*] All checks are done! Files saved to ' + self.full_path + Fore.RESET)
+        print(Fore.BLUE + '[*] All checks are done! Files saved to ' + self._config["full_path"] + Fore.RESET)
 
     # Find specific app using drozer
     def find_app(self) -> list:
-        final_command = self._drozer_cmd + ['-c', f'{Commands.FIND_APP.value["cmd"]} -f {self.find_app_query}', '--debug']
-        print(Commands.FIND_APP.value["display"] + " Command used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.FIND_APP.value["cmd"]} -f {self.find_app_query}" --debug')
+        final_command = self._drozer_cmd + ['-c', f'{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}', '--debug']
+        print(Commands.FIND_APP.value["display"] + " Command used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}" --debug')
         output = subprocess.run(final_command, stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()
         apps = []
 
@@ -349,7 +339,7 @@ class drozer:
             if self.content_provider["update_values"]:
                 fcmd += f'{" ".join(self.content_provider["projection"])}'
             if self.content_provider["selection"]:
-                fcmd += f' --selection {self.provider["selection"]}'
+                fcmd += f' --selection {self.content_provider["selection"]}'
             if self.content_provider["selection_args"]:
                 fcmd += f' --selection-args {" ".join(self.content_provider["selection_args"])}'
             if self.content_provider["uri"]:
