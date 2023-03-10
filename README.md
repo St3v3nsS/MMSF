@@ -4,8 +4,8 @@ Massive Mobile Security Framework or MMSF is a mobile framework that combines fu
 # Installation
 
 ```bash
-git clone
-cd
+git clone https://github.com/St3v3nsS/MMSF.git
+cd MMSF
 python3 -m pip install -r requirements.txt
 ```
 
@@ -22,7 +22,7 @@ python3 mmsf.py
 |-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
 broadcast               |  Send a broadcast intent
 provider                |  Exploit the exported content provider to extract data
-deeplink                |  Launch a deeplink with supplied value
+deeplink                |  Launch a deeplink with supplied value or generate malicious files to steal sensitive data
 backup                  |  Extract or restore backup from Android Application
 find                    |  Find the package name of an application and/or its details by supplying a filter keyword
 fingerprint             |  Bypass Fingerprint authentication on both iOS/Android

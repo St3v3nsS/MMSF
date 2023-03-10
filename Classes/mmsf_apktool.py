@@ -42,7 +42,9 @@ class apktool:
         print(Fore.BLUE + "[*] java is running!" + Fore.RESET)       
 
     def reconfigure(self, sign=False):
-        self.config["apk"] = self.config["apk"].rstrip('.apk') + '.apk' 
+        if self.config["apk"].endswith(".apk"):
+            self.config["apk"] = self.config["apk"][:-len(".apk")]
+        self.config["apk"] += '.apk'
         if sign:
             self._generated_apk = os.path.join(self.config["path"], self.config['in_apk'].rstrip('.apk') + '.apk') if self.config["in_apk"] != 'base' or self.config["path"] != Constants.DIR_PULLED_APKS.value  else Constants.GENERATED_APK.value
             self._patched_apk = os.path.join(self.config["path"], self.config['out_apk'].rstrip('.apk') + '_patched.apk') if self.config["out_apk"] != 'base' or self.config["path"] != Constants.DIR_PULLED_APKS.value  else Constants.PATCHED_APK.value

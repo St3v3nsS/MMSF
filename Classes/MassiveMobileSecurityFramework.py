@@ -1,5 +1,3 @@
-from ast import For
-from dataclasses import dataclass
 import os
 import re
 from asyncio.subprocess import DEVNULL
@@ -43,7 +41,6 @@ class MassiveMobileSecurityFramework:
         self.__check_prerequisites()
         self.__init_dirs()
         self.__init_frameworks()
-        self._all_apps = self.get_all_apps()
 
     def __check_prerequisites(self):
         packages = ['apktool', 'apksigner', 'java', 'drozer', 'reflutter', 'objection', 'frida']
@@ -59,6 +56,14 @@ class MassiveMobileSecurityFramework:
             print(Fore.RED + "Please use mmsfupdate first!" + Fore.RESET)
             quit()
         
+    def is_ios(self):
+        cmd = "frida-ps -U"
+        p = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.decode()
+        if "springboard" in p:
+            print(Fore.BLUE + '[*] Detected iOS device' + Fore.RESET)
+            return True
+        return False
+        
     def __init_frameworks(self):
         low_power_mode = True
         if not check_alive_devices():
@@ -67,14 +72,19 @@ class MassiveMobileSecurityFramework:
             if resp.lower() == 'n':
                 print(Fore.RED + '[-] Exitting' + Fore.RESET)
                 exit(1)
-                
-        self._drozer = drozer(low_power_mode)
+        
         self._frida = Frida(low_power_mode)
         self._objection = objection(low_power_mode)
-        self._reflutter = reflutter(low_power_mode)
-        self._apktool = apktool(low_power_mode)
+        if self.is_ios():
+            return
         self._other_tools = OtherTools(low_power_mode)
+        self._drozer = drozer(low_power_mode)
+        self._apktool = apktool(low_power_mode)
+        self._reflutter = reflutter(low_power_mode)        
+        self._all_apps = self.get_all_apps()
+        print(Fore.BLUE + '[*] Detected Android device' + Fore.RESET)
 
+        
     def __repr__(self) -> str:
         pass
 
@@ -576,10 +586,11 @@ class MassiveMobileSecurityFramework:
                 if self._apktool.config["apk"] == "base":
                     self._apktool.config["apk"] = file_name[0]
                 self._apktool.reconfigure()
-                pull_cmd = [Constants.ADB.value, 'pull', file_path, os.path.join(self._apktool.config["path"], ''.join(file_name))]
+                pull_cmd = [Constants.ADB.value, 'pull', file_path, os.path.join(self._apktool.config["path"], self._apktool.config["apk"])]
                 p = subprocess.run(pull_cmd, stdout=PIPE, stderr=PIPE)
                 print(Fore.GREEN + '[+] Pulling apk...' + Fore.RESET)
                 print(Fore.GREEN + '[+] ' +  p.stdout.decode().strip() + Fore.RESET)
+                print(Fore.GREEN + f'[+] Data pulled successfully to {self._apktool.config["path"]}' + Fore.RESET)
                 return
         print(Fore.RED + '[-] The application does not exist. Try again' + Fore.RESET)
                 
@@ -646,15 +657,139 @@ class MassiveMobileSecurityFramework:
             back()
             return 2
 
+    def generate_jsinterface(self, cmd, data):
+        self._other_tools._generate_deeplink_data = data
+        if cmd == "run": 
+            if self._other_tools._generate_deeplink_data["server"] and self._other_tools._generate_deeplink_data["scheme"] and self._other_tools._generate_deeplink_data["package"] and self._other_tools._generate_deeplink_data["component"] and self._other_tools._generate_deeplink_data["deeplink_uri"] and self._other_tools._generate_deeplink_data["param"] and self._other_tools._generate_deeplink_data["js_interface"]:
+                self._other_tools.generate_jsinterface()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "SERVER", "value": self._other_tools._generate_deeplink_data["server"], "description": "The server you are using to host the files. Default to: http://127.0.0.1:8000"},
+                {"name": "FILENAME", "value": self._other_tools._generate_deeplink_data["filename"], "description": "The file name. Default to: steal.html", "required": False},
+                {"name": "SCHEME", "value": self._other_tools._generate_deeplink_data["scheme"], "description": "The deeplink's scheme."},
+                {"name": "PACKAGE", "value": self._other_tools._generate_deeplink_data["package"], "description": "The application package name: com.example.android"},
+                {"name": "COMPONENT", "value": self._other_tools._generate_deeplink_data["component"], "description": "The vulnerable activity. e.g. com.example.android/.WebViewActivity"},
+                {"name": "DEEPLINK_URI", "value": self._other_tools._generate_deeplink_data["deeplink_uri"], "description": "The deeplink URI."},
+                {"name": "PARAM", "value": self._other_tools._generate_deeplink_data["param"], "description": "The deeplink's vulnerable parameter."},
+                {"name": "JS_INTERFACE", "value": self._other_tools._generate_deeplink_data["js_interface"], "description": "The vulnerable JavaScript Interface"},
+                {"name": "PATH", "value": self._other_tools._generate_deeplink_data["path"], "description": "The path where to store the files. Default to: ~/.mmsf/loot/", "required": False},
+                {"name": "POC_FILENAME", "value": self._other_tools._generate_deeplink_data["poc_filename"], "description": "The POC filename. Default to: launch.html", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def generate_deeplink(self, cmd, data):
+        self._other_tools._generate_deeplink_data_d = data
+        if cmd == "run": 
+            if self._other_tools._generate_deeplink_data_d["scheme"] and self._other_tools._generate_deeplink_data_d["package"] and self._other_tools._generate_deeplink_data_d["component"] and self._other_tools._generate_deeplink_data_d["deeplink_uri"]:
+                self._other_tools.generate_deeplink()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "SCHEME", "value": self._other_tools._generate_deeplink_data_d["scheme"], "description": "The deeplink's scheme."},
+                {"name": "PACKAGE", "value": self._other_tools._generate_deeplink_data_d["package"], "description": "The application package name: com.example.android"},
+                {"name": "COMPONENT", "value": self._other_tools._generate_deeplink_data_d["component"], "description": "The vulnerable activity. e.g. com.example.android/.WebViewActivity"},
+                {"name": "DEEPLINK_URI", "value": self._other_tools._generate_deeplink_data_d["deeplink_uri"], "description": "The deeplink URI."},
+                {"name": "PATH", "value": self._other_tools._generate_deeplink_data_d["path"], "description": "The path where to store the files. Default to: ~/.mmsf/loot/", "required": False},
+                {"name": "EXTRAS", "value": self._other_tools._generate_deeplink_data_d["extras"], "description": "The extra values in form of TYPE KEY VALUE. e.g. S com.example.REDIRECT_URL https://interactsh.io. To remove an extra value, just type remove KEY", "required": False}
+            ])
+            return 0
+        elif cmd == "exit":
+            quit()
+        elif cmd == "back":
+            back()
+            return 2
 
         # Analyze Keystore
     def keystore_analyze(self, cmd, data):
         pass
 
-    # Bypass Local Auth using Fingerprint
-    def fingerprint_bypass_ios(self, cmd, data):
-        pass
-
+    # Bypass Fingerprint detection using frida android
+    def bypass_android_biometrics_frida(self, cmd, data):
+        self._frida.config = data
+        if cmd == "run":
+            if self._frida.config["mode"] == '-R':
+                if not self._frida.config["host"]:
+                    print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                    return 0    
+            if self._frida.config["app"]:
+                self._frida.bypass_android_biometrics()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE", "value": "SERIAL" if self._frida.config["mode"] == "-U" else "REMOTE", "description": "The Type of Connection with frida-server: Serial or Remote. Default set to Serial", "required": False},
+                {"name": "APP", "value": self._frida.config["app"], "description": "The application package name: com.example.android"},
+                {"name": "HOST", "value": self._frida.config["host"], "description": "If MODE set to Remote, specify HOST. Default set to 127.0.0.1", "required": False},
+                {"name": "PAUSE", "value": "TRUE" if self._frida.config["pause"] == "--pause" else "FALSE" , "description": "The application should be paused on start? Default set to FALSE", "required": False},
+                {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
+            return 0
+        elif cmd == "exit":
+            quit()
+        elif cmd == "back":
+            back()
+            return 2
+    
+    # Bypass Fingerprint detection using frida ios
+    def bypass_ios_biometrics_frida(self, cmd, data):
+        self._frida.config = data
+        if cmd == "run":
+            if self._frida.config["mode"] == '-R':
+                if not self._frida.config["host"]:
+                    print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                    return 0    
+            if self._frida.config["app"]:
+                self._frida.bypass_ios_biometrics()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE", "value": "SERIAL" if self._frida.config["mode"] == "-U" else "REMOTE", "description": "The Type of Connection with frida-server: Serial or Remote. Default set to Serial", "required": False},
+                {"name": "APP", "value": self._frida.config["app"], "description": "The application package name: com.example.android"},
+                {"name": "HOST", "value": self._frida.config["host"], "description": "If MODE set to Remote, specify HOST. Default set to 127.0.0.1", "required": False},
+                {"name": "PAUSE", "value": "TRUE" if self._frida.config["pause"] == "--pause" else "FALSE" , "description": "The application should be paused on start? Default set to FALSE", "required": False},
+                {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
+            return 0
+        elif cmd == "exit":
+            quit()
+        elif cmd == "back":
+            back()
+            return 2
+    
+    
+    # Bypass Fingerprint detection using objection ios
+    def bypass_ios_biometrics_objection(self, cmd, data):
+        self._objection._config["app"] = data["app"]
+        if cmd == "run": 
+            if self._objection._config["app"]:
+                self._objection.bypass_ios_biometrics()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APP", "value": self._objection._config["app"], "description": "The application package name: com.example.android"}])
+            return 0
+        elif cmd == "exit":
+            quit()
+        elif cmd == "back":
+            back()
+            return 2
 
     # Patch IPA
     def patch_ipa(self):
@@ -675,3 +810,50 @@ class MassiveMobileSecurityFramework:
     # Install burp CA as root
     def install_burp_root_ca(self, cmd, data):
         pass
+    
+    def bypass_jailbreak_objection_ios(self, cmd, data):
+        self._objection._config["app"] = data["app"]
+        if cmd == "run": 
+            if self._objection._config["app"]:
+                self._objection.bypass_ios_jailbreak()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APP", "value": self._objection._config["app"], "description": "The application package name: com.example.ios"}])
+            return 0
+        elif cmd == "exit":
+            quit()
+        elif cmd == "back":
+            back()
+            return 2
+        
+    def bypass_ios_jailbreak_frida(self, cmd, data):
+        self._frida.config = data
+        if cmd == "run":
+            if self._frida.config["mode"] == '-R':
+                if not self._frida.config["host"]:
+                    print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                    return 0    
+            if self._frida.config["app"]:
+                self._frida.bypass_ios_jailbreak()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE", "value": "SERIAL" if self._frida.config["mode"] == "-U" else "REMOTE", "description": "The Type of Connection with frida-server: Serial or Remote. Default set to Serial", "required": False},
+                {"name": "APP", "value": self._frida.config["app"], "description": "The application package name: com.example.android"},
+                {"name": "HOST", "value": self._frida.config["host"], "description": "If MODE set to Remote, specify HOST. Default set to 127.0.0.1", "required": False},
+                {"name": "PAUSE", "value": "TRUE" if self._frida.config["pause"] == "--pause" else "FALSE" , "description": "The application should be paused on start? Default set to FALSE", "required": False},
+                {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
+            return 0
+        elif cmd == "exit":
+            quit()
+        elif cmd == "back":
+            back()
+            return 2
+    

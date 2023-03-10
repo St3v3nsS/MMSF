@@ -1,4 +1,4 @@
-#!/usr/bin/python3.8
+#!/usr/bin/python3
 
 import os
 import pkgutil
@@ -6,7 +6,7 @@ import readline
 import shlex
 from signal import signal, SIGINT
 from Classes.MassiveMobileSecurityFramework import MassiveMobileSecurityFramework
-from Classes.utils import listmodules, unknown_cmd
+from Classes.utils import listmodules, search, unknown_cmd
 from colorama import Fore
 
 def handler(signal_received, frame):
@@ -41,7 +41,7 @@ def main():
     modules_names, descriptions = zip(*details_) 
 
     mmsf = MassiveMobileSecurityFramework()
-    initial_commands = ["usemodule", "exit", "listmodules"]
+    initial_commands = ["usemodule", "exit", "listmodules", "search"]
     readline.parse_and_bind("tab: complete")
 
     while True:
@@ -72,7 +72,12 @@ def main():
                     modules_dict[action].execute(mmsf)
             else:
                 print(Fore.RED + '[-] Usage: usemodule modulename' + Fore.RESET)
+        elif input_val[0].lower() == "search":
+            if len(input_val) == 2:
+                action = input_val[1].lower()
+                search(action, modules_dict)
 
 if __name__ == "__main__":
     signal(SIGINT, handler)
     main()
+    

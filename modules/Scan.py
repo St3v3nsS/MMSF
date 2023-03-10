@@ -43,7 +43,7 @@ class Scan:
 
             # The commands to be executed
             def execute(cmd, data):
-                mmsf.run_all(cmd, data)
+                return mmsf.run_all(cmd, data)
                 
             readline.set_completer(cmd_completer)
 

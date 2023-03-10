@@ -268,7 +268,7 @@ class HandleAPK:
 
                 # The commands to be executed
                 def execute(cmd, data):
-                    mmsf.install_apk(cmd, data)
+                    return mmsf.install_apk(cmd, data)
                     
                 readline.set_completer(cmd_completer)
 
@@ -287,7 +287,7 @@ class HandleAPK:
                     # wait for data to be set
                     while True:
                         readline.set_completer(data_completer)
-                        inpt = shlex.split(input('mmsf (handleapk/sign/set)> '))
+                        inpt = shlex.split(input('mmsf (handleapk/install/set)> '))
                         if len(inpt) > 1:
                             cmd, *args = inpt
                         elif len(inpt) < 1:

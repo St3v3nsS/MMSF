@@ -115,7 +115,7 @@ class drozer:
 
     def __check_is_running(self):
         try:
-            p = subprocess.run(self._drozer_devices, capture_output=True)
+            p = subprocess.run(self._drozer_devices, stderr=PIPE, stdout=PIPE)
             if 'There was a problem connecting to the drozer Server.' in p.stderr.decode().splitlines():
                 return False
             return True
@@ -124,8 +124,8 @@ class drozer:
 
     def __start_agent(self):
         try:
-            p = subprocess.run([Constants.ADB.value] + 'shell am start -n com.mwr.dz/.activities.MainActivity'.split(), stderr=PIPE, stdout=PIPE)
-            p = subprocess.run([Constants.ADB.value, 'shell', 'am', 'startservice', '-n', 'com.mwr.dz/.services.ServerService', '-c', 'com.mwr.dz.START_EMBEDDED'], stderr=PIPE, stdout=PIPE)
+            p = subprocess.run([Constants.ADB.value] + 'shell su am start -n com.mwr.dz/.activities.MainActivity'.split(), stderr=PIPE, stdout=PIPE)
+            p = subprocess.run([Constants.ADB.value, 'shell', 'su', '-c "am startservice -n com.mwr.dz/.services.ServerService -c com.mwr.dz.START_EMBEDDED"'], stderr=PIPE, stdout=PIPE)
             return p.stderr.decode().splitlines()
         except Exception:
             return ["Not Found"]
@@ -137,7 +137,6 @@ class drozer:
         if not self.__check_is_running():
             print(Fore.RED + "[-] Drozer is not running... Trying to wake the Agent... "+ Fore.RESET)
             stderr = self.__start_agent()
-            print(stderr)
             if stderr:
                 print(Fore.RED + "[-] Drozer Agent is not installed on the phone. Installing ..." + Fore.RESET)
                 self.__download_agent()

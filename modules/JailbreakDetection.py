@@ -5,7 +5,7 @@ from Classes.constants import Constants
 from Classes.utils import back, listmodules, unknown_cmd
 
 
-class RootDetection:
+class JailbreakDetection:
     _description: str
     _name: str
 
@@ -18,8 +18,8 @@ class RootDetection:
         return self._description
 
     def __init__(self) -> None:
-        self._description = "Bypass the Android root detection mechanisms through different methods"
-        self._name = "rootdetection"
+        self._description = "Bypass the ios Jailbreak detection mechanisms through different methods"
+        self._name = "jailbreakdetection"
     
     def execute(self, mmsf):
         def handle_frida():
@@ -47,11 +47,11 @@ class RootDetection:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_root_frida(cmd,data)
+                    return mmsf.bypass_ios_jailbreak_frida(cmd,data)
 
                 readline.set_completer(cmd_completer)
                 
-                value = shlex.split(input('mmsf (rootdetection/frida)> '))
+                value = shlex.split(input('mmsf (jailbreakdetection/frida)> '))
                 if len(value) < 1:
                     continue
                 else:
@@ -60,7 +60,7 @@ class RootDetection:
                     while True:
                         
                         readline.set_completer(data_completer)
-                        inpt = shlex.split(input('mmsf (rootdetection/frida/set)> '))
+                        inpt = shlex.split(input('mmsf (jailbreakdetection/frida/set)> '))
                         if len(inpt) > 1:
                             cmd, *args = inpt
                         elif len(inpt) < 1:
@@ -115,11 +115,11 @@ class RootDetection:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_root_objection_android(cmd,data)
+                    return mmsf.bypass_jailbreak_objection_ios(cmd,data)
 
                 readline.set_completer(cmd_completer)
                 
-                value = shlex.split(input('mmsf (rootdetection/objection)> '))
+                value = shlex.split(input('mmsf (jailbreakdetection/objection)> '))
                 if len(value) < 1:
                     continue
                 else:
@@ -128,7 +128,7 @@ class RootDetection:
                     while True:
                         
                         readline.set_completer(data_completer)
-                        inpt = shlex.split(input('mmsf (rootdetection/objection/set)> '))
+                        inpt = shlex.split(input('mmsf (jailbreakdetection/objection/set)> '))
                         if len(inpt) > 1:
                             cmd, *args = inpt
                         elif len(inpt) < 1:
@@ -147,8 +147,8 @@ class RootDetection:
 
         modules = ["objection", "frida"]
         descriptions = [
-            "Bypass the Android root detection mechanism using Objection (not working with System.exit)", 
-            "Frida Script to bypass the Root Detection"
+            "Bypass the iOS Jailbreak detection mechanism using Objection", 
+            "Frida Script to bypass the iOS Jailbreak Detection"
             ]
 
         while True:
@@ -161,7 +161,7 @@ class RootDetection:
 
             readline.set_completer(init_completer)
 
-            input_val = shlex.split(input('mmsf (rootdetection)> '))
+            input_val = shlex.split(input('mmsf (jailbreakdetection)> '))
             if len(input_val) < 1:
                 continue
             if len(input_val) > 2:

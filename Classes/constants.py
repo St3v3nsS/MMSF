@@ -1,5 +1,6 @@
 from enum import Enum
 import os
+import tempfile
 
 class Constants(Enum):
     DELIM = " " * 10  + "|  "
@@ -18,8 +19,8 @@ class Constants(Enum):
     APKTOOL_PATH = '/usr/local/bin/apktool'
     APKTOOL_JAR_PATH = '/usr/local/bin/apktool.jar'
     DROZER_WHEEL = '/tmp/drozer_setup.whl'
-    NEWBACKUP_NAME_TAR="newbackup.tar"
-    NEWBACKUP_NAME="newbackup.ab"
-    PCKLIST_NAME="package.list"
-    BACKUP_NAME="backup.ab"
-    BACKUP_COMPRESSED_NAME="backup.tar"
+    NEWBACKUP_NAME_TAR = "newbackup.tar"
+    NEWBACKUP_NAME = "newbackup.ab"
+    PCKLIST_NAME = "package.list"
+    BACKUP_NAME = "backup.ab"
+    BACKUP_COMPRESSED_NAME = "backup.tar"
