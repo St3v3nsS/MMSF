@@ -1,3 +1,4 @@
+import re
 from threading import Thread
 from colorama import Fore
 from Classes.constants import Constants
@@ -217,11 +218,12 @@ def find_command(cmd, search_word):
         return False
     
 def nice_print(data):
-    print(data)
+    regex = r"modules\.(.*?)\."
+    print(f'{re.compile(regex).findall(str(data))[0]}')
 
 def search(cmd, data):
     for key in data.keys():
         if cmd in key:
             nice_print(data[key])
-    
+
     

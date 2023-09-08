@@ -75,6 +75,12 @@ Here is a list of commands that you can use
 - [ ] Implement global module change like usemodule rootdetection/frida
 - [ ] Modify the signing method to ubersign
 - [ ] Add keystore checks
+- [ x ] Search command
 - [ ] Extract important strings from the app
 - [ ] Add Nuclei checks
 - [ ] RMS Integration
+- [ ] Install Burp Certificate
+- [ ] Clipboard manager
+- [ ] Patch IPA 
+- [ ] Emulator Bypass
+- [ ] Split apk install
