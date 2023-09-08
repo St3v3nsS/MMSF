@@ -1,10 +1,10 @@
 
 // Java.perform(function() {
 
-//     console.log("[*] Hooking calls to System.exit");
+//     send("[*] Hooking calls to System.exit");
 //     var exitClass = Java.use("java.lang.System");
 //     exitClass.exit.implementation = function(){
-//         console.log("[*] System.exit called");
+//         send("[*] System.exit called");
 //     }
 
 //     var RootPackages = ["com.noshufou.android.su", "com.noshufou.android.su.elite", "eu.chainfire.supersu",
@@ -351,10 +351,10 @@
 
 setTimeout(function() {
     Java.perform(function () {
-        console.log('');
-        console.log('======');
-        console.log('[#] Android Bypass for various Certificate Pinning methods [#]');
-        console.log('======');
+        send('');
+        send('======');
+        send('[#] Android Bypass for various Certificate Pinning methods [#]');
+        send('======');
 
 
         var X509TrustManager = Java.use('javax.net.ssl.X509TrustManager');
@@ -381,13 +381,13 @@ setTimeout(function() {
         try {
             // Override the init method, specifying the custom TrustManager
             SSLContext_init.implementation = function(keyManager, trustManager, secureRandom) {
-                console.log('[+] Bypassing Trustmanager (Android < 7) request');
+                send('[+] Bypassing Trustmanager (Android < 7) request');
                 SSLContext_init.call(this, keyManager, TrustManagers, secureRandom);
             };
     
         } catch (err) {
-            console.log('[-] TrustManager (Android < 7) pinner not found');
-            //console.log(err);
+            send('[-] TrustManager (Android < 7) pinner not found');
+            //send(err);
         }
 
      
@@ -396,27 +396,27 @@ setTimeout(function() {
         try {
             var okhttp3_Activity = Java.use('okhttp3.CertificatePinner');
 	    okhttp3_Activity.check$okhttp.overload('java.lang.String', 'kotlin.jvm.functions.Function0').implementation= function (str) {
-	    	console.log('[+] Bypassing' + str);
+	    	send('[+] Bypassing' + str);
 		return; 
 	    };
             okhttp3_Activity.check.overload('java.lang.String', 'java.util.List').implementation = function (str) {
-                console.log('[+] Bypassing OkHTTPv3 {1}: ' + str);
+                send('[+] Bypassing OkHTTPv3 {1}: ' + str);
                 return true;
             };
             // This method of CertificatePinner.check could be found in some old Android app
             okhttp3_Activity.check.overload('java.lang.String', 'java.security.cert.Certificate').implementation = function (str) {
-                console.log('[+] Bypassing OkHTTPv3 {2}: ' + str);
+                send('[+] Bypassing OkHTTPv3 {2}: ' + str);
                 return true;
             };
 	   var app_smali = Java.use('com.app.romcard.App');
 	   app_smali.isSSLPinningActive.overload().implementation = function () {
-		console.log('dadada');		
+		send('dadada');		
 		return false;	 
 	}
     
         } catch (err) {
-            console.log('[-] OkHTTPv3 pinner not found');
-            //console.log(err);
+            send('[-] OkHTTPv3 pinner not found');
+            //send(err);
         }
 	
 
@@ -426,21 +426,21 @@ setTimeout(function() {
         try {
             var trustkit_Activity = Java.use('com.datatheorem.android.trustkit.pinning.OkHostnameVerifier');
             trustkit_Activity.verify.overload('java.lang.String', 'javax.net.ssl.SSLSession').implementation = function (str) {
-                console.log('[+] Bypassing Trustkit {1}: ' + str);
+                send('[+] Bypassing Trustkit {1}: ' + str);
                 return true;
             };
             trustkit_Activity.verify.overload('java.lang.String', 'java.security.cert.X509Certificate').implementation = function (str) {
-                console.log('[+] Bypassing Trustkit {2}: ' + str);
+                send('[+] Bypassing Trustkit {2}: ' + str);
                 return true;
             };
             var trustkit_PinningTrustManager = Java.use('com.datatheorem.android.trustkit.pinning.PinningTrustManager');
             trustkit_PinningTrustManager.checkServerTrusted.implementation = function () {
-                console.log('[+] Bypassing Trustkit {3}');
+                send('[+] Bypassing Trustkit {3}');
             };
     
         } catch (err) {
-            console.log('[-] Trustkit pinner not found');
-            //console.log(err);
+            send('[-] Trustkit pinner not found');
+            //send(err);
         }
     
     
@@ -449,13 +449,13 @@ setTimeout(function() {
         try {
             var TrustManagerImpl = Java.use('com.android.org.conscrypt.TrustManagerImpl');
             TrustManagerImpl.verifyChain.implementation = function (untrustedChain, trustAnchorChain, host, clientAuth, ocspData, tlsSctData) {
-                console.log('[+] Bypassing TrustManagerImpl (Android > 7): ' + host);
+                send('[+] Bypassing TrustManagerImpl (Android > 7): ' + host);
                 return untrustedChain;
             };
             
         } catch (err) {
-            console.log('[-] TrustManagerImpl (Android > 7) pinner not found');
-            //console.log(err);
+            send('[-] TrustManagerImpl (Android > 7) pinner not found');
+            //send(err);
         }   
   
   
@@ -464,12 +464,12 @@ setTimeout(function() {
         try {
             var appcelerator_PinningTrustManager = Java.use('appcelerator.https.PinningTrustManager');
             appcelerator_PinningTrustManager.checkServerTrusted.implementation = function () {
-                console.log('[+] Bypassing Appcelerator PinningTrustManager');
+                send('[+] Bypassing Appcelerator PinningTrustManager');
             };
 
         } catch (err) {
-            console.log('[-] Appcelerator PinningTrustManager pinner not found');
-            //console.log(err);
+            send('[-] Appcelerator PinningTrustManager pinner not found');
+            //send(err);
         }
 
 
@@ -478,12 +478,12 @@ setTimeout(function() {
         try {
             var OpenSSLSocketImpl = Java.use('com.android.org.conscrypt.OpenSSLSocketImpl');
             OpenSSLSocketImpl.verifyCertificateChain.implementation = function (certRefs, JavaObject, authMethod) {
-                console.log('[+] Bypassing OpenSSLSocketImpl Conscrypt');
+                send('[+] Bypassing OpenSSLSocketImpl Conscrypt');
             };
         
         } catch (err) {
-            console.log('[-] OpenSSLSocketImpl Conscrypt pinner not found');
-            //console.log(err);        
+            send('[-] OpenSSLSocketImpl Conscrypt pinner not found');
+            //send(err);        
         }
 
 
@@ -491,12 +491,12 @@ setTimeout(function() {
         try {
             var OpenSSLEngineSocketImpl_Activity = Java.use('com.android.org.conscrypt.OpenSSLEngineSocketImpl');
             OpenSSLSocketImpl_Activity.verifyCertificateChain.overload('[Ljava.lang.Long;', 'java.lang.String').implementation = function (str1, str2) {
-                console.log('[+] Bypassing OpenSSLEngineSocketImpl Conscrypt: ' + str2);
+                send('[+] Bypassing OpenSSLEngineSocketImpl Conscrypt: ' + str2);
             };
         
         } catch (err) {
-            console.log('[-] OpenSSLEngineSocketImpl Conscrypt pinner not found');
-            //console.log(err);
+            send('[-] OpenSSLEngineSocketImpl Conscrypt pinner not found');
+            //send(err);
         }
 
 
@@ -505,12 +505,12 @@ setTimeout(function() {
         try {
             var OpenSSLSocketImpl_Harmony = Java.use('org.apache.harmony.xnet.provider.jsse.OpenSSLSocketImpl');
             OpenSSLSocketImpl_Harmony.verifyCertificateChain.implementation = function (asn1DerEncodedCertificateChain, authMethod) {
-                console.log('[+] Bypassing OpenSSLSocketImpl Apache Harmony');
+                send('[+] Bypassing OpenSSLSocketImpl Apache Harmony');
             };
 
         } catch (err) {
-            console.log('[-] OpenSSLSocketImpl Apache Harmony pinner not found');
-            //console.log(err);      
+            send('[-] OpenSSLSocketImpl Apache Harmony pinner not found');
+            //send(err);      
         }
 
 
@@ -519,13 +519,13 @@ setTimeout(function() {
         try {
             var phonegap_Activity = Java.use('nl.xservices.plugins.sslCertificateChecker');
             phonegap_Activity.execute.overload('java.lang.String', 'org.json.JSONArray', 'org.apache.cordova.CallbackContext').implementation = function (str) {
-                console.log('[+] Bypassing PhoneGap sslCertificateChecker: ' + str);
+                send('[+] Bypassing PhoneGap sslCertificateChecker: ' + str);
                 return true;
             };
     
         } catch (err) {
-            console.log('[-] PhoneGap sslCertificateChecker pinner not found');
-            //console.log(err);
+            send('[-] PhoneGap sslCertificateChecker pinner not found');
+            //send(err);
         }
 
 
@@ -534,17 +534,17 @@ setTimeout(function() {
         try {
             var WLClient_Activity = Java.use('com.worklight.wlclient.api.WLClient');
             WLClient_Activity.getInstance().pinTrustedCertificatePublicKey.overload('java.lang.String').implementation = function (cert) {
-                console.log('[+] Bypassing IBM MobileFirst pinTrustedCertificatePublicKey {1}: ' + cert);
+                send('[+] Bypassing IBM MobileFirst pinTrustedCertificatePublicKey {1}: ' + cert);
                 return;
             };
             WLClient_Activity.getInstance().pinTrustedCertificatePublicKey.overload('[Ljava.lang.String;').implementation = function (cert) {
-                console.log('[+] Bypassing IBM MobileFirst pinTrustedCertificatePublicKey {2}: ' + cert);
+                send('[+] Bypassing IBM MobileFirst pinTrustedCertificatePublicKey {2}: ' + cert);
                 return;
             };
 
         } catch (err) {
-            console.log('[-] IBM MobileFirst pinTrustedCertificatePublicKey pinner not found');
-            //console.log(err);
+            send('[-] IBM MobileFirst pinTrustedCertificatePublicKey pinner not found');
+            //send(err);
         }
 
 
@@ -553,25 +553,25 @@ setTimeout(function() {
         try {
             var worklight_Activity = Java.use('com.worklight.wlclient.certificatepinning.HostNameVerifierWithCertificatePinning');
             worklight_Activity.verify.overload('java.lang.String', 'javax.net.ssl.SSLSocket').implementation = function (str) {
-                console.log('[+] Bypassing IBM WorkLight HostNameVerifierWithCertificatePinning {1}: ' + str);                
+                send('[+] Bypassing IBM WorkLight HostNameVerifierWithCertificatePinning {1}: ' + str);                
                 return;
             };
             worklight_Activity.verify.overload('java.lang.String', 'java.security.cert.X509Certificate').implementation = function (str) {
-                console.log('[+] Bypassing IBM WorkLight HostNameVerifierWithCertificatePinning {2}: ' + str);
+                send('[+] Bypassing IBM WorkLight HostNameVerifierWithCertificatePinning {2}: ' + str);
                 return;
             };
             worklight_Activity.verify.overload('java.lang.String', '[Ljava.lang.String;', '[Ljava.lang.String;').implementation = function (str) {
-                console.log('[+] Bypassing IBM WorkLight HostNameVerifierWithCertificatePinning {3}: ' + str);
+                send('[+] Bypassing IBM WorkLight HostNameVerifierWithCertificatePinning {3}: ' + str);
                 return;
             };
             worklight_Activity.verify.overload('java.lang.String', 'javax.net.ssl.SSLSession').implementation = function (str) {
-                console.log('[+] Bypassing IBM WorkLight HostNameVerifierWithCertificatePinning {4}: ' + str);
+                send('[+] Bypassing IBM WorkLight HostNameVerifierWithCertificatePinning {4}: ' + str);
                 return true;
             };
 
         } catch (err) {
-            console.log('[-] IBM WorkLight HostNameVerifierWithCertificatePinning pinner not found');
-            //console.log(err);
+            send('[-] IBM WorkLight HostNameVerifierWithCertificatePinning pinner not found');
+            //send(err);
         }
 
 
@@ -580,13 +580,13 @@ setTimeout(function() {
         try {
             var conscrypt_CertPinManager_Activity = Java.use('com.android.org.conscrypt.CertPinManager');
             conscrypt_CertPinManager_Activity.isChainValid.overload('java.lang.String', 'java.util.List').implementation = function (str) {
-                console.log('[+] Bypassing Conscrypt CertPinManager: ' + str);
+                send('[+] Bypassing Conscrypt CertPinManager: ' + str);
                 return true;
             };
     
         } catch (err) {
-            console.log('[-] Conscrypt CertPinManager pinner not found');
-            //console.log(err);
+            send('[-] Conscrypt CertPinManager pinner not found');
+            //send(err);
         }
 
 
@@ -595,13 +595,13 @@ setTimeout(function() {
         try {
             var cwac_CertPinManager_Activity = Java.use('com.commonsware.cwac.netsecurity.conscrypt.CertPinManager');
             cwac_CertPinManager_Activity.isChainValid.overload('java.lang.String', 'java.util.List').implementation = function (str) {
-                console.log('[+] Bypassing CWAC-Netsecurity CertPinManager: ' + str);
+                send('[+] Bypassing CWAC-Netsecurity CertPinManager: ' + str);
                 return true;
             };
     
         } catch (err) {
-            console.log('[-] CWAC-Netsecurity CertPinManager pinner not found');
-            //console.log(err);
+            send('[-] CWAC-Netsecurity CertPinManager pinner not found');
+            //send(err);
         }
 
 
@@ -610,13 +610,13 @@ setTimeout(function() {
         try {
             var androidgap_WLCertificatePinningPlugin_Activity = Java.use('com.worklight.androidgap.plugin.WLCertificatePinningPlugin');
             androidgap_WLCertificatePinningPlugin_Activity.execute.overload('java.lang.String', 'org.json.JSONArray', 'org.apache.cordova.CallbackContext').implementation = function (str) {
-                console.log('[+] Bypassing Worklight Androidgap WLCertificatePinningPlugin: ' + str);
+                send('[+] Bypassing Worklight Androidgap WLCertificatePinningPlugin: ' + str);
                 return true;
             };
     
         } catch (err) {
-            console.log('[-] Worklight Androidgap WLCertificatePinningPlugin pinner not found');
-            //console.log(err);
+            send('[-] Worklight Androidgap WLCertificatePinningPlugin pinner not found');
+            //send(err);
         }
 
 
@@ -627,12 +627,12 @@ setTimeout(function() {
             //NOTE: sometimes this below implementation could be useful 
             //var netty_FingerprintTrustManagerFactory = Java.use('org.jboss.netty.handler.ssl.util.FingerprintTrustManagerFactory');
             netty_FingerprintTrustManagerFactory.checkTrusted.implementation = function (type, chain) {
-                console.log('[+] Bypassing Netty FingerprintTrustManagerFactory');
+                send('[+] Bypassing Netty FingerprintTrustManagerFactory');
             };
 
         } catch (err) {
-            console.log('[-] Netty FingerprintTrustManagerFactory pinner not found');
-            //console.log(err);
+            send('[-] Netty FingerprintTrustManagerFactory pinner not found');
+            //send(err);
         }
 
 
@@ -641,18 +641,18 @@ setTimeout(function() {
         try {
             var Squareup_CertificatePinner_Activity = Java.use('com.squareup.okhttp.CertificatePinner');
             Squareup_CertificatePinner_Activity.check.overload('java.lang.String', 'java.security.cert.Certificate').implementation = function (str1, str2) {
-                console.log('[+] Bypassing Squareup CertificatePinner {1}: ' + str1);
+                send('[+] Bypassing Squareup CertificatePinner {1}: ' + str1);
                 return;
             };
 
             Squareup_CertificatePinner_Activity.check.overload('java.lang.String', 'java.util.List').implementation = function (str1, str2) {
-                console.log('[+] Bypassing Squareup CertificatePinner {2}: ' + str1);
+                send('[+] Bypassing Squareup CertificatePinner {2}: ' + str1);
                 return;
             };
         
         } catch (err) {
-            console.log('[-] Squareup CertificatePinner pinner not found');
-            //console.log(err);
+            send('[-] Squareup CertificatePinner pinner not found');
+            //send(err);
         }
 
 
@@ -661,18 +661,18 @@ setTimeout(function() {
         try {
             var Squareup_OkHostnameVerifier_Activity = Java.use('com.squareup.okhttp.internal.tls.OkHostnameVerifier');
             Squareup_OkHostnameVerifier_Activity.verify.overload('java.lang.String', 'java.security.cert.X509Certificate').implementation = function (str1, str2) {
-                console.log('[+] Bypassing Squareup OkHostnameVerifier {1}: ' + str1);
+                send('[+] Bypassing Squareup OkHostnameVerifier {1}: ' + str1);
                 return true;
             };
             
             Squareup_OkHostnameVerifier_Activity.verify.overload('java.lang.String', 'javax.net.ssl.SSLSession').implementation = function (str1, str2) {
-                console.log('[+] Bypassing Squareup OkHostnameVerifier {2}: ' + str1);
+                send('[+] Bypassing Squareup OkHostnameVerifier {2}: ' + str1);
                 return true;
             };
             
         } catch (err) {
-            console.log('[-] Squareup OkHostnameVerifier pinner not found');
-            //console.log(err);
+            send('[-] Squareup OkHostnameVerifier pinner not found');
+            //send(err);
         }
 
 
@@ -681,12 +681,12 @@ setTimeout(function() {
         try {
             var AndroidWebViewClient_Activity = Java.use('android.webkit.WebViewClient');
             AndroidWebViewClient_Activity.onReceivedSslError.overload('android.webkit.WebView', 'android.webkit.SslErrorHandler', 'android.net.http.SslError').implementation = function (obj1, obj2, obj3) {
-                console.log('[+] Bypassing Android WebViewClient');
+                send('[+] Bypassing Android WebViewClient');
             };
             
         } catch (err) {
-            console.log('[-] Android WebViewClient pinner not found');
-            //console.log(err);
+            send('[-] Android WebViewClient pinner not found');
+            //send(err);
         }
 
 
@@ -695,13 +695,13 @@ setTimeout(function() {
         try {
             var CordovaWebViewClient_Activity = Java.use('org.apache.cordova.CordovaWebViewClient');
             CordovaWebViewClient_Activity.onReceivedSslError.overload('android.webkit.WebView', 'android.webkit.SslErrorHandler', 'android.net.http.SslError').implementation = function (obj1, obj2, obj3) {
-                console.log('[+] Bypassing Apache Cordova WebViewClient');
+                send('[+] Bypassing Apache Cordova WebViewClient');
                 obj3.proceed();
             };
             
         } catch (err) {
-            console.log('[-] Apache Cordova WebViewClient pinner not found');
-            //console.log(err):
+            send('[-] Apache Cordova WebViewClient pinner not found');
+            //send(err):
         }
 
 
@@ -710,12 +710,12 @@ setTimeout(function() {
         try {
             var boye_AbstractVerifier = Java.use('ch.boye.httpclientandroidlib.conn.ssl.AbstractVerifier');
             boye_AbstractVerifier.verify.implementation = function (host, ssl) {
-                console.log('[+] Bypassing Boye AbstractVerifier: ' + host);
+                send('[+] Bypassing Boye AbstractVerifier: ' + host);
             };
             
         } catch (err) {
-            console.log('[-] Boye AbstractVerifier pinner not found');
-            //console.log(err):
+            send('[-] Boye AbstractVerifier pinner not found');
+            //send(err):
         }
 
      
@@ -781,7 +781,7 @@ function stackTraceHere(isLog){
     var Log = Java.use('android.util.Log');
     var stackinfo = Log.getStackTraceString(Exception.$new())
     if(isLog){
-        console.log(stackinfo)
+        send(stackinfo)
     }else{
         return stackinfo
     }
@@ -791,7 +791,7 @@ function stackTraceNativeHere(isLog){
     var backtrace = Thread.backtrace(this.context, Backtracer.ACCURATE)
     .map(DebugSymbol.fromAddress)
     .join("\n\t");
-    console.log(backtrace)
+    send(backtrace)
 }
 
 
@@ -804,12 +804,12 @@ function bypassJavaFileCheck(){
         const filename = file.getAbsolutePath();
 
         if (filename.indexOf("magisk") >= 0) {
-            console.log("Anti Root Detect - check file: " + filename)
+            send("Anti Root Detect - check file: " + filename)
             return false;
         }
 
         if (commonPaths.indexOf(filename) >= 0) {
-            console.log("Anti Root Detect - check file: " + filename)
+            send("Anti Root Detect - check file: " + filename)
             return false;
         }
 
@@ -826,7 +826,7 @@ function bypassNativeFileCheck(){
         onLeave:function(retval){
             if(retval.toInt32() != 0){
                 if (commonPaths.indexOf(this.inputPath) >= 0) {
-                    console.log("Anti Root Detect - fopen : " + this.inputPath)
+                    send("Anti Root Detect - fopen : " + this.inputPath)
                     retval.replace(ptr(0x0))
                 }
             }
@@ -841,7 +841,7 @@ function bypassNativeFileCheck(){
         onLeave:function(retval){
             if(retval.toInt32()==0){
                 if(commonPaths.indexOf(this.inputPath) >= 0){
-                    console.log("Anti Root Detect - access : " + this.inputPath)
+                    send("Anti Root Detect - access : " + this.inputPath)
                     retval.replace(ptr(-1))
                 }
             }
@@ -861,7 +861,7 @@ function setProp(){
 
     // Build.deriveFingerprint.inplementation = function(){
     //     var ret = this.deriveFingerprint() //该函数无法通过反射调用
-    //     console.log(ret)
+    //     send(ret)
     //     return ret
     // }
 
@@ -886,9 +886,9 @@ function setProp(){
 function bypassRootAppCheck(){
     var ApplicationPackageManager = Java.use("android.app.ApplicationPackageManager")
     ApplicationPackageManager.getPackageInfo.overload('java.lang.String', 'int').implementation = function(str,i){
-        // console.log(str)
+        // send(str)
         if (ROOTmanagementApp.indexOf(str) >= 0) {
-            console.log("Anti Root Detect - check package : " + str)
+            send("Anti Root Detect - check package : " + str)
             str = "ashen.one.ye.not.found"
         }
         return this.getPackageInfo(str,i)
@@ -904,13 +904,13 @@ function bypassShellCheck(){
     ProcessImpl.start.implementation = function(cmdarray,env,dir,redirects,redirectErrorStream){
 
         if(cmdarray[0] == "mount"){
-            console.log("Anti Root Detect - Shell : " + cmdarray.toString())
+            send("Anti Root Detect - Shell : " + cmdarray.toString())
             arguments[0] = Java.array('java.lang.String',[String.$new("")])
             return ProcessImpl.start.apply(this,arguments)
         }
 
         if(cmdarray[0] == "getprop"){
-            console.log("Anti Root Detect - Shell : " + cmdarray.toString())
+            send("Anti Root Detect - Shell : " + cmdarray.toString())
             const prop = [
                 "ro.secure",
                 "ro.debuggable"
@@ -926,7 +926,7 @@ function bypassShellCheck(){
                 "su"
             ];
             if(prop.indexOf(cmdarray[1]) >= 0){
-                console.log("Anti Root Detect - Shell : " + cmdarray.toString())
+                send("Anti Root Detect - Shell : " + cmdarray.toString())
                 arguments[0] = Java.array('java.lang.String',[String.$new("")])
                 return ProcessImpl.start.apply(this,arguments)
             }
@@ -937,7 +937,7 @@ function bypassShellCheck(){
 }
 
 
-console.log("Attach")
+send("Attach")
 bypassNativeFileCheck()
 bypassJavaFileCheck()
 setProp()

@@ -108,15 +108,18 @@ class drozer:
 
     def _regenerate(self):
         self._config["outdir"] = os.path.join(Constants.DIR_SCANS_PATH.value, "drozer_" + self._config["app_name"] + "_results")
+
         if self._config["full_path"]:
             self._config["outdir"] = self._config["full_path"]
         else:
             self._config["full_path"] = self._config["outdir"]
 
+        return True
+
     def __check_is_running(self):
         try:
-            p = subprocess.run(self._drozer_devices, stderr=PIPE, stdout=PIPE)
-            if 'There was a problem connecting to the drozer Server.' in p.stderr.decode().splitlines():
+            p = subprocess.run(" ".join(self._drozer_devices).split(), stderr=PIPE, stdout=PIPE)
+            if 'There was a problem connecting to the drozer Server.' in p.stderr.decode().splitlines() or 'There was a problem connecting to the drozer Server.' in p.stdout.decode().splitlines():
                 return False
             return True
         except Exception as e:
@@ -149,7 +152,7 @@ class drozer:
             print(Fore.BLUE + "[*] Drozer Agent is running!" + Fore.RESET)
 
     def __download_agent(self): 
-        url = "https://github.com/mwrlabs/drozer/releases/download/2.3.4/drozer-agent-2.3.4.apk"
+        url = "https://github.com/WithSecureLabs/drozer-agent/releases/download/2.5.2/agent-debug.apk"
         drozer_agent = requests.get(url)
         open(self._agent_apk_path, 'wb').write(drozer_agent.content)
 
@@ -169,7 +172,7 @@ class drozer:
         fname = cmd.value["fname"]
         msg = cmd.value["display"]
 
-        final_command = self._drozer_cmd + ['-c', command, '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', command, '--debug']
         print(msg)
         print(Fore.YELLOW + '[*] Command used ' + " ".join(final_command))
         with open(os.path.join(self._config["full_path"],fname), "w") as outfile:
@@ -182,7 +185,7 @@ class drozer:
             try:
                 os.mkdir(self._config["full_path"])
             except OSError as e:
-                print(Fore.LIGHTBLUE_EX + '[DEBUG] ' + e + Fore.RESET)
+                print(Fore.LIGHTBLUE_EX + '[DEBUG] ' + e.strerror + Fore.RESET)
 
         for command in (Commands):
             if command.name.startswith("COMMAND_"):
@@ -191,7 +194,7 @@ class drozer:
 
     # Find specific app using drozer
     def find_app(self) -> list:
-        final_command = self._drozer_cmd + ['-c', f'{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}', '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}', '--debug']
         print(Commands.FIND_APP.value["display"] + " Command used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}" --debug')
         output = subprocess.run(final_command, stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()
         apps = []
@@ -270,7 +273,7 @@ class drozer:
                 fcmd += f' --selection-args {" ".join(self.content_provider["selection_args"])}'
             if self.content_provider["uri"]:
                 fcmd += f"{self.content_provider['uri']}"
-        final_command = self._drozer_cmd + ['-c', f'{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}', '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}', '--debug']
         print(Commands.QUERY_CONTENT.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}" --debug' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
@@ -278,7 +281,7 @@ class drozer:
 
     # Open DeepLinks
     def open_deeplink(self):
-        final_command = self._drozer_cmd + ['-c', f'{Commands.LAUNCH_DEEPLINK.value["cmd"]} {self.activity["deeplink"]}', '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.LAUNCH_DEEPLINK.value["cmd"]} {self.activity["deeplink"]}', '--debug']
         print(Commands.LAUNCH_DEEPLINK.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.LAUNCH_DEEPLINK.value["cmd"]}{self.activity["deeplink"]}" --debug' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
@@ -300,7 +303,7 @@ class drozer:
                 fcmd += f' --data-type {self.sniff_data["type"]}'
         if self.sniff_data['category']:
             fcmd += f" --category {self.sniff_data['category']}"
-        final_command = self._drozer_cmd + ['-c', f'{Commands.SNIFF_DATA.value["cmd"]}{fcmd}', '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.SNIFF_DATA.value["cmd"]}{fcmd}', '--debug']
         print(Commands.SNIFF_DATA.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.SNIFF_DATA.value["cmd"]}{fcmd}" --debug' + Fore.RESET)
         p = subprocess.Popen(final_command, stdout=subprocess.PIPE, stderr=DEVNULL, bufsize=1, universal_newlines=True)
         while p.poll() is None:
@@ -325,7 +328,7 @@ class drozer:
                 fcmd += f'{" ".join(self.content_provider["projection"])}'
             if self.content_provider["uri"]:
                 fcmd += f" {self.content_provider['uri']}"
-        final_command = self._drozer_cmd + ['-c', f'{Commands.INSERT_PROVIDER.value["cmd"]} {fcmd.strip()}', '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.INSERT_PROVIDER.value["cmd"]} {fcmd.strip()}', '--debug']
         print(Commands.INSERT_PROVIDER.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.INSERT_PROVIDER.value["cmd"]} {fcmd.strip()}" --debug' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
@@ -343,7 +346,7 @@ class drozer:
                 fcmd += f' --selection-args {" ".join(self.content_provider["selection_args"])}'
             if self.content_provider["uri"]:
                 fcmd += f"{self.content_provider['uri']}"
-        final_command = self._drozer_cmd + ['-c', f'{Commands.UPDATE_PROVIDER.value["cmd"]} {fcmd.strip()}', '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.UPDATE_PROVIDER.value["cmd"]} {fcmd.strip()}', '--debug']
         print(Commands.UPDATE_PROVIDER.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.UPDATE_PROVIDER.value["cmd"]} {fcmd.strip()}" --debug' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
@@ -361,7 +364,7 @@ class drozer:
                 fcmd += f' --data-path {" ".join(self.content_provider["selection_args"])}'
             if self.content_provider["uri"]:
                 fcmd += f"{self.content_provider['uri']}"
-        final_command = self._drozer_cmd + ['-c', f'{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}', '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}', '--debug']
         print(Commands.QUERY_CONTENT.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}" --debug' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:

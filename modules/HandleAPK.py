@@ -1,7 +1,7 @@
 import readline
 import shlex
 from Classes.constants import Constants
-from Classes.utils import back, listmodules, unknown_cmd
+from Classes.utils import back, listmodules, print_help, unknown_cmd
 
 class HandleAPK:
     _description: str
@@ -348,3 +348,5 @@ class HandleAPK:
             elif input_val[0].lower() == "back":
                 back()
                 break
+            elif input_val[0].lower() == "help" or input_val[0] == "?":
+                print_help()

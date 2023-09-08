@@ -39,6 +39,7 @@ AliasInfo(String alias)
 
 
 Java.perform(function () {
+	send("Attached")
 	hookKeystoreGetInstance();
 	hookKeystoreGetInstance_Provider();
 	hookKeystoreGetInstance_Provider2();
@@ -58,7 +59,7 @@ Java.perform(function () {
 
 
 });
-console.log("KeyStore hooks loaded!");
+send("KeyStore hooks loaded!");
 
 var keystoreList = [];
 var StringCls = null;
@@ -71,8 +72,8 @@ Java.perform(function () {
 function hookKeystoreConstructor() {
 	var keyStoreConstructor = Java.use('java.security.KeyStore').$init.overload("java.security.KeyStoreSpi", "java.security.Provider", "java.lang.String");
 	keyStoreConstructor.implementation = function (keyStoreSpi, provider, type) {
-		//console.log("[Call] Keystore(java.security.KeyStoreSpi, java.security.Provider, java.lang.String )")
-		console.log("[Keystore()]: KeyStoreSpi: " + keyStoreSpi + ", Provider: " + provider + ", type: " + type);
+		//send("[Call] Keystore(java.security.KeyStoreSpi, java.security.Provider, java.lang.String )")
+		send("[Keystore()]: KeyStoreSpi: " + keyStoreSpi + ", Provider: " + provider + ", type: " + type);
 		return this.$init(keyStoreSpi, provider, type);
 
 	}
@@ -81,8 +82,8 @@ function hookKeystoreConstructor() {
 function hookKeystoreGetInstance() {
 	var keyStoreGetInstance = Java.use('java.security.KeyStore')['getInstance'].overload("java.lang.String");
 	keyStoreGetInstance.implementation = function (type) {
-		//console.log("[Call] Keystore.getInstance(java.lang.String )")
-		console.log("[Keystore.getInstance()]: type: " + type);
+		//send("[Call] Keystore.getInstance(java.lang.String )")
+		send("[Keystore.getInstance()]: type: " + type);
 		var tmp = this.getInstance(type);
 		keystoreList.push(tmp); // Collect keystore objects to allow dump them later using ListAliasesRuntime()
 		return tmp;
@@ -92,8 +93,8 @@ function hookKeystoreGetInstance() {
 function hookKeystoreGetInstance_Provider() {
 	var keyStoreGetInstance = Java.use('java.security.KeyStore')['getInstance'].overload("java.lang.String", "java.lang.String");
 	keyStoreGetInstance.implementation = function (type, provider) {
-		//console.log("[Call] Keystore.getInstance(java.lang.String, java.lang.String )")
-		console.log("[Keystore.getInstance2()]: type: " + type + ", provider: " + provider);
+		//send("[Call] Keystore.getInstance(java.lang.String, java.lang.String )")
+		send("[Keystore.getInstance2()]: type: " + type + ", provider: " + provider);
 		var tmp = this.getInstance(type, proivder);
 		keystoreList.push(tmp); // Collect keystore objects to allow dump them later using ListAliasesRuntime()
 		return tmp;
@@ -103,8 +104,8 @@ function hookKeystoreGetInstance_Provider() {
 function hookKeystoreGetInstance_Provider2() {
 	var keyStoreGetInstance = Java.use('java.security.KeyStore')['getInstance'].overload("java.lang.String", "java.security.Provider");
 	keyStoreGetInstance.implementation = function (type, provider) {
-		//console.log("[Call] Keystore.getInstance(java.lang.String, java.security.Provider )")
-		console.log("[Keystore.getInstance2()]: type: " + type + ", provider: " + provider);
+		//send("[Call] Keystore.getInstance(java.lang.String, java.security.Provider )")
+		send("[Keystore.getInstance2()]: type: " + type + ", provider: " + provider);
 		var tmp = this.getInstance(type, proivder);
 		keystoreList.push(tmp); // Collect keystore objects to allow dump them later using ListAliasesRuntime()
 		return tmp;
@@ -118,10 +119,10 @@ function hookKeystoreLoad(dump) {
 	var keyStoreLoad = Java.use('java.security.KeyStore')['load'].overload('java.security.KeyStore$LoadStoreParameter');
 	/* following function hooks to a Keystore.load(java.security.KeyStore.LoadStoreParameter) */
 	keyStoreLoad.implementation = function (param) {
-		//console.log("[Call] Keystore.load(java.security.KeyStore.LoadStoreParameter)")
-		console.log("[Keystore.load(LoadStoreParameter)]: keystoreType: " + this.getType() + ", param: " + param);
+		//send("[Call] Keystore.load(java.security.KeyStore.LoadStoreParameter)")
+		send("[Keystore.load(LoadStoreParameter)]: keystoreType: " + this.getType() + ", param: " + param);
 		this.load(param);
-		if (dump) console.log(" Keystore loaded aliases: " + ListAliasesObj(this));
+		if (dump) send(" Keystore loaded aliases: " + ListAliasesObj(this));
 	}
 }
 
@@ -132,11 +133,11 @@ function hookKeystoreLoadStream(dump) {
 	var keyStoreLoadStream = Java.use('java.security.KeyStore')['load'].overload('java.io.InputStream', '[C');
 	/* following function hooks to a Keystore.load(InputStream stream, char[] password) */
 	keyStoreLoadStream.implementation = function (stream, charArray) {
-		//console.log("[Call] Keystore.load(InputStream stream, char[] password)")
+		//send("[Call] Keystore.load(InputStream stream, char[] password)")
 		//var hexString = readStreamToHex (stream);
-		console.log("[Keystore.load(InputStream, char[])]: keystoreType: " + this.getType() + ", password: '" + charArrayToString(charArray) + "', inputSteam: " + stream);
+		send("[Keystore.load(InputStream, char[])]: keystoreType: " + this.getType() + ", password: '" + charArrayToString(charArray) + "', inputSteam: " + stream);
 		this.load(stream, charArray);
-		if (dump) console.log(" Keystore loaded aliases: " + ListAliasesObj(this));
+		if (dump) send(" Keystore loaded aliases: " + ListAliasesObj(this));
 	}
 }
 
@@ -144,7 +145,7 @@ function hookKeystoreStore() {
 	var keyStoreStoreStream = Java.use('java.security.KeyStore')['store'].overload('java.security.KeyStore$LoadStoreParameter');
 	/* following function hooks to a Keystore.store(java.security.KeyStore$LoadStoreParameter) */
 	keyStoreStoreStream.implementation = function (param) {
-		console.log("[Keystore.store()]: keystoreType: " + this.getType() + ", param: '" + param);
+		send("[Keystore.store()]: keystoreType: " + this.getType() + ", param: '" + param);
 		this.store(stream, charArray);
 	}
 }
@@ -153,7 +154,7 @@ function hookKeystoreStoreStream() {
 	var keyStoreStoreStream = Java.use('java.security.KeyStore')['store'].overload('java.io.OutputStream', '[C');
 	/* following function hooks to a Keystore.store(OutputStream stream, char[] password) */
 	keyStoreStoreStream.implementation = function (stream, charArray) {
-		console.log("[Keystore.store(OutputStream, char[])]: keystoreType: " + this.getType() + ", password: '" + charArrayToString(charArray) + "', outputSteam: " + stream);
+		send("[Keystore.store(OutputStream, char[])]: keystoreType: " + this.getType() + ", password: '" + charArrayToString(charArray) + "', outputSteam: " + stream);
 		this.store(stream, charArray);
 	}
 }
@@ -161,8 +162,8 @@ function hookKeystoreStoreStream() {
 function hookKeystoreGetKey() {
 	var keyStoreGetKey = Java.use('java.security.KeyStore')['getKey'].overload("java.lang.String", "[C");
 	keyStoreGetKey.implementation = function (alias, charArray) {
-		//console.log("[Call] Keystore.getKey(java.lang.String, [C )")
-		console.log("[Keystore.getKey()]: alias: " + alias + ", password: '" + charArrayToString(charArray) + "'");
+		//send("[Call] Keystore.getKey(java.lang.String, [C )")
+		send("[Keystore.getKey()]: alias: " + alias + ", password: '" + charArrayToString(charArray) + "'");
 		return this.getKey(alias, charArray);
 	}
 }
@@ -170,8 +171,8 @@ function hookKeystoreGetKey() {
 function hookKeystoreSetEntry() {
 	var keyStoreSetKeyEntry = Java.use('java.security.KeyStore')['setEntry'].overload("java.lang.String", "java.security.KeyStore$Entry", "java.security.KeyStore$ProtectionParameter");
 	keyStoreSetKeyEntry.implementation = function (alias, entry, protection) {
-		//console.log("[Call] Keystore.setEntry(java.lang.String, java.security.KeyStore$Entry, java.security.KeyStore$ProtectionParameter )")
-		console.log("[Keystore.setEntry()]: alias: " + alias + ", entry: " + dumpKeyStoreEntry(entry) + "', protection: " + dumpProtectionParameter(protection));
+		//send("[Call] Keystore.setEntry(java.lang.String, java.security.KeyStore$Entry, java.security.KeyStore$ProtectionParameter )")
+		send("[Keystore.setEntry()]: alias: " + alias + ", entry: " + dumpKeyStoreEntry(entry) + "', protection: " + dumpProtectionParameter(protection));
 		return this.setEntry(alias, entry, protection);
 	}
 }
@@ -179,8 +180,8 @@ function hookKeystoreSetEntry() {
 function hookKeystoreSetKeyEntry() {
 	var keyStoreSetKeyEntry = Java.use('java.security.KeyStore')['setKeyEntry'].overload("java.lang.String", "java.security.Key", "[C", "[Ljava.security.cert.Certificate;");
 	keyStoreSetKeyEntry.implementation = function (alias, key, charArray, certs) {
-		//console.log("[Call] Keystore.setKeyEntry(java.lang.String, java.security.Key, [C, [Ljava.security.cert.Certificate; )
-		console.log("[Keystore.setKeyEntry()]: alias: " + alias + ", key: " + key + ", password: '" + charArrayToString(charArray) + "', certs: " + certs);
+		//send("[Call] Keystore.setKeyEntry(java.lang.String, java.security.Key, [C, [Ljava.security.cert.Certificate; )
+		send("[Keystore.setKeyEntry()]: alias: " + alias + ", key: " + key + ", password: '" + charArrayToString(charArray) + "', certs: " + certs);
 		return this.setKeyEntry(alias, key, charArray, certs);
 	}
 }
@@ -188,8 +189,8 @@ function hookKeystoreSetKeyEntry() {
 function hookKeystoreSetKeyEntry2() {
 	var keyStoreSetKeyEntry = Java.use('java.security.KeyStore')['setKeyEntry'].overload("java.lang.String", "[B", "[Ljava.security.cert.Certificate;");
 	keyStoreSetKeyEntry.implementation = function (alias, key, certs) {
-		//console.log("[Call] Keystore.setKeyEntry(java.lang.String, [B, [Ljava.security.cert.Certificate; )")
-		console.log("[Keystore.setKeyEntry2()]: alias: " + alias + ", key: " + key + "', certs: " + certs);
+		//send("[Call] Keystore.setKeyEntry(java.lang.String, [B, [Ljava.security.cert.Certificate; )")
+		send("[Keystore.setKeyEntry2()]: alias: " + alias + ", key: " + key + "', certs: " + certs);
 		return this.setKeyEntry(alias, key, certs);
 	}
 }
@@ -200,8 +201,8 @@ function hookKeystoreSetKeyEntry2() {
 function hookKeystoreGetCertificate() {
 	var keyStoreGetCertificate = Java.use('java.security.KeyStore')['getCertificate'].overload("java.lang.String");
 	keyStoreGetCertificate.implementation = function (alias) {
-		//console.log("[Call] Keystore.getCertificate(java.lang.String )")
-		console.log("[Keystore.getCertificate()]: alias: " + alias);
+		//send("[Call] Keystore.getCertificate(java.lang.String )")
+		send("[Keystore.getCertificate()]: alias: " + alias);
 		return this.getCertificate(alias);
 	}
 }
@@ -212,8 +213,8 @@ function hookKeystoreGetCertificate() {
 function hookKeystoreGetCertificateChain() {
 	var keyStoreGetCertificate = Java.use('java.security.KeyStore')['getCertificateChain'].overload("java.lang.String");
 	keyStoreGetCertificate.implementation = function (alias) {
-		//console.log("[Call] Keystore.getCertificateChain(java.lang.String )")
-		console.log("[Keystore.getCertificateChain()]: alias: " + alias);
+		//send("[Call] Keystore.getCertificateChain(java.lang.String )")
+		send("[Keystore.getCertificateChain()]: alias: " + alias);
 		return this.getCertificate(alias);
 	}
 }
@@ -221,10 +222,10 @@ function hookKeystoreGetCertificateChain() {
 function hookKeystoreGetEntry() {
 	var keyStoreGetEntry = Java.use('java.security.KeyStore')['getEntry'].overload("java.lang.String", "java.security.KeyStore$ProtectionParameter");
 	keyStoreGetEntry.implementation = function (alias, protection) {
-		//console.log("[Call] Keystore.getEntry(java.lang.String, java.security.KeyStore$ProtectionParameter )")
-		console.log("[Keystore.getEntry()]: alias: " + alias + ", protection: '" + dumpProtectionParameter(protection) + "'");
+		//send("[Call] Keystore.getEntry(java.lang.String, java.security.KeyStore$ProtectionParameter )")
+		send("[Keystore.getEntry()]: alias: " + alias + ", protection: '" + dumpProtectionParameter(protection) + "'");
 		var entry = this.getEntry(alias, protection);
-		console.log("[getEntry()]: Entry: " + dumpKeyStoreEntry(entry));
+		send("[getEntry()]: Entry: " + dumpKeyStoreEntry(entry));
 		return entry;
 	}
 }
@@ -273,7 +274,7 @@ function dumpKeyStoreEntry(entry) {
 			var key = getSecretKeyMethod.call(castedEntry);
 			var keyGetFormatMethod = Java.use(key.$className)['getFormat'];
 			var keyGetEncodedMethod = Java.use(key.$className)['getEncoded'];
-			//console.log(""+key.$className);
+			//send(""+key.$className);
 			if (key.$className.localeCompare("android.security.keystore.AndroidKeyStoreSecretKey") == 0)
 				return "keyClass: android.security.keystore.AndroidKeyStoreSecretKey can't dump";
 			return "keyFormat: " + keyGetFormatMethod.call(key) + ", encodedKey: '" + keyGetEncodedMethod.call(key) + "', key: " + key;
@@ -298,7 +299,7 @@ function ListAliasesStatic() {
 	// BCPKCS12/PKCS12-DEF - exceptions
 	var keystoreTypes = ["AndroidKeyStore", "AndroidCAStore", /*"BCPKCS12",*/ "BKS", "BouncyCastle", "PKCS12", /*"PKCS12-DEF"*/];
 	keystoreTypes.forEach(function (entry) {
-		console.log("[ListAliasesStatic] keystoreType: " + entry + " \nAliases: " + ListAliasesType(entry));
+		send("[ListAliasesStatic] keystoreType: " + entry + " \nAliases: " + ListAliasesType(entry));
 	});
 	return "[done]";
 }
@@ -309,9 +310,9 @@ function ListAliasesStatic() {
 */
 function ListAliasesRuntime() {
 	Java.perform(function () {
-		console.log("[ListAliasesRuntime] Instances: " + keystoreList);
+		send("[ListAliasesRuntime] Instances: " + keystoreList);
 		keystoreList.forEach(function (entry) {
-			console.log("[ListAliasesRuntime] keystoreObj: " + entry + " type: " + entry.getType() + " \n" + ListAliasesObj(entry));
+			send("[ListAliasesRuntime] keystoreObj: " + entry + " type: " + entry.getType() + " \n" + ListAliasesObj(entry));
 		});
 	});
 	return "[done]";
@@ -335,7 +336,7 @@ function ListAliasesType(type) {
 		var keyStoreObj = keyStoreCls.getInstance(type);
 		keyStoreObj.load(null);
 		var aliases = keyStoreObj.aliases();
-		//console.log("aliases: " + aliases.getClass());
+		//send("aliases: " + aliases.getClass());
 		while (aliases.hasMoreElements()) {
 			result.push("'" + aliases.nextElement() + "'");
 		}
@@ -390,7 +391,7 @@ function AliasInfo(keyAlias) {
 		keyStoreObj.load(null);
 		var key = keyStoreObj.getKey(keyAlias, null);
 		if (key == null) {
-			console.log('key does not exist');
+			send('key does not exist');
 			return null;
 		}
 		try {
@@ -422,9 +423,9 @@ function AliasInfo(keyAlias) {
 		result.isUserAuthenticationRequirementEnforcedBySecureHardware = keyInfoCls['isUserAuthenticationRequirementEnforcedBySecureHardware'].call(keyInfo);
 		result.isUserAuthenticationValidWhileOnBody = keyInfoCls['isUserAuthenticationValidWhileOnBody'].call(keyInfo);
 		try { result.isUserConfirmationRequired = keyInfoCls['isUserConfirmationRequired'].call(keyInfo); } catch (err) { }
-		//console.log(" result: " + JSON.stringify(result));
+		//send(" result: " + JSON.stringify(result));
 
-		//console.log("aliases: " + aliases.getClass());
+		//send("aliases: " + aliases.getClass());
 
 
 	});

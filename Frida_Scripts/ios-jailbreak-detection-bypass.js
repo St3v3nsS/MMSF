@@ -70,6 +70,7 @@ const canOpenURL = [
 
 if (ObjC.available) {
     try {
+        send("Attached")
         //Hooking fileExistsAtPath:
         Interceptor.attach(ObjC.classes.NSFileManager["- fileExistsAtPath:"].implementation, {
             onEnter(args) {
@@ -93,10 +94,10 @@ if (ObjC.available) {
 
                 // ignore failed lookups
                 if (retval.isNull()) {
-                    console.log(`fileExistsAtPath: try to check for ` + this.path + ' was failed');
+                    send(`fileExistsAtPath: try to check for ` + this.path + ' was failed');
                     return;
                 }
-                console.log(`fileExistsAtPath: check for ` + this.path + ` was successful with: ` + retval.toString() + `, marking it as failed.`);
+                send(`fileExistsAtPath: check for ` + this.path + ` was successful with: ` + retval.toString() + `, marking it as failed.`);
                 retval.replace(new NativePointer(0x00));
             },
         });
@@ -122,10 +123,10 @@ if (ObjC.available) {
 
                 // ignore failed lookups
                 if (retval.isNull()) {
-                    console.log(`fopen: try to check for ` + this.path + ' was failed');
+                    send(`fopen: try to check for ` + this.path + ' was failed');
                     return;
                 }
-                console.log(`fopen: check for ` + this.path + ` was successful with: ` + retval.toString() + `, marking it as failed.`);
+                send(`fopen: check for ` + this.path + ` was successful with: ` + retval.toString() + `, marking it as failed.`);
                 retval.replace(new NativePointer(0x00));
             },
         });
@@ -150,7 +151,7 @@ if (ObjC.available) {
                 if (retval.isNull()) {
                     return;
                 }
-                console.log(`canOpenURL: check for ` +
+                send(`canOpenURL: check for ` +
                     this.path + ` was successful with: ` +
                     retval.toString() + `, marking it as failed.`);
                 retval.replace(new NativePointer(0x00));
@@ -166,7 +167,7 @@ if (ObjC.available) {
                     if (retval.isNull()) {
                         return;
                     }
-                    console.log(`Call to libSystem.B.dylib::fork() was successful with ` +
+                    send(`Call to libSystem.B.dylib::fork() was successful with ` +
                     retval.toString() + ` marking it as failed.`);
                     retval.replace(new NativePointer(0x0));
                 },
@@ -174,9 +175,9 @@ if (ObjC.available) {
         }
     }
     catch (err) {
-        console.log("Exception : " + err.message);
+        send("Exception : " + err.message);
     }
 }
 else {
-    console.log("Objective-C Runtime is not available!");
+    send("Objective-C Runtime is not available!");
 }

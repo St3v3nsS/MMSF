@@ -32,6 +32,7 @@ class MassiveMobileSecurityFramework:
     _reflutter: reflutter
     _apktool: apktool
     _other_tools: OtherTools
+    _device_type: str
 
     @property
     def all_apps(self):
@@ -63,7 +64,9 @@ class MassiveMobileSecurityFramework:
         p = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.decode()
         if "springboard" in p:
             print(Fore.BLUE + '[*] Detected iOS device' + Fore.RESET)
+            self._device_type = 'iOS'
             return True
+        self._device_type = 'android'
         return False
         
     def __init_frameworks(self):
@@ -118,8 +121,10 @@ class MassiveMobileSecurityFramework:
     # methods
     # Get a list of all installed apps
     def get_all_apps(self) -> list:
-        final_command = self._drozer._drozer_cmd + ['-c', Commands.FIND_APP.value["cmd"], '--debug']
-        return list(map(lambda x: x.split(" ")[0] ,subprocess.run(final_command, stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()[2:])) 
+        if self._device_type == 'iOS':
+            return list()
+        final_command = " ".join(self._drozer._drozer_cmd).split() + ['-c', Commands.FIND_APP.value["cmd"], '--debug']
+        return list(map(lambda x: x.split(" ")[0], subprocess.run(final_command, stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()[2:])) 
 
     # run all drozer scans
     def run_all(self, cmd, data):
@@ -129,7 +134,7 @@ class MassiveMobileSecurityFramework:
         self._drozer._regenerate()
 
         if cmd == "run":
-            if self._drozer.config["outdir"] and self._drozer.config["app_name"]:
+            if self._drozer.config["app_name"]:
                 self._drozer.run_all()
                 return 1
             else:
@@ -137,7 +142,7 @@ class MassiveMobileSecurityFramework:
                 return 0
         elif cmd == "show":
             print_show_table([
-                {"name": "OUTDIR", "value": self._drozer.config["full_path"], "description": "The directory where the scans will save the data."},
+                {"name": "OUTDIR", "value": self._drozer.config["full_path"], "description": "The directory where the scans will save the data. Default is ~/.mmsf/loot/drozer_scans/"},
                 {"name": "APP_NAME", "value": self._drozer.config["app_name"], "description": "The name of the application to be scanned."}])
             return 0
         elif cmd == "exit":

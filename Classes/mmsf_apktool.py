@@ -84,7 +84,7 @@ class apktool:
 
     def install_apk(self):
         self.reconfigure()
-        cmd_to_exec = [Constants.ADB.value, 'install', '-r', self.config["apk"]]
+        cmd_to_exec = [Constants.ADB.value, 'install', '-r', os.path.join(self.config["path"],self.config["apk"])]
         p = subprocess.run(cmd_to_exec, stderr=PIPE, stdout=DEVNULL)
         if "INSTALL_FAILED_TEST_ONLY" in p.stderr.decode():
             p2 = subprocess.run(cmd_to_exec[:-1] + ['-t'] + [self.config["apk"]], stderr=PIPE, stdout=DEVNULL)

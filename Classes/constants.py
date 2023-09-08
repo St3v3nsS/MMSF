@@ -1,6 +1,5 @@
 from enum import Enum
 import os
-import tempfile
 
 class Constants(Enum):
     DELIM = " " * 10  + "|  "
@@ -23,4 +22,4 @@ class Constants(Enum):
     PCKLIST_NAME = "package.list"
     BACKUP_NAME = "backup.ab"
     BACKUP_COMPRESSED_NAME = "backup.tar"
-    DROZER = "docker run -it fsecure/drozer drozer"
+    DROZER = "docker run --network host --rm -it fsecure/drozer drozer"

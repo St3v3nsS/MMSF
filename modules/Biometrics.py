@@ -1,9 +1,8 @@
 import readline
 import shlex
-from turtle import back
 
 from Classes.constants import Constants
-from Classes.utils import listmodules, unknown_cmd
+from Classes.utils import listmodules, print_help, unknown_cmd, back
 
 
 class Biometrics:
@@ -244,6 +243,8 @@ class Biometrics:
                         unknown_cmd()
                     elif action == "ios":
                         handle_objection_ios()
+                    elif action == "android":
+                        print("Not yet implemented")
                 elif input_val[0].lower() == "back":
                     back()
                     break
@@ -316,3 +317,5 @@ class Biometrics:
             elif input_val[0].lower() == "back":
                 back()
                 break
+            elif input_val[0].lower() == "help" or input_val[0] == "?":
+                print_help()

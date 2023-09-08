@@ -6,7 +6,7 @@ import subprocess
 from colorama import Fore
 from subprocess import DEVNULL, PIPE
 from Classes.constants import Constants
-from Classes.utils import execute_command, find_command
+from Classes.utils import execute_frida_command, find_command
 
 class Frida:
     _config: dict
@@ -107,9 +107,8 @@ class Frida:
             
         def exec_new():
             self.copy_file("ssl")
-            cmd = f'frida {self._config["pause"].strip()} {self._config["mode"]} {self.config["method"]} {self._config["app"].strip()} -l {self.temp_file}'
             outfile = self.files['ssl-android']
-            execute_command(cmd, outfile, 'frida')
+            execute_frida_command(self.config, self.temp_file, outfile, 'frida')
 
         found = find_command('frida', self.config["app"])
         if not found:
@@ -124,9 +123,8 @@ class Frida:
             
         def exec_new():
             self.copy_file("root")
-            cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
             outfile = self.files['root-android']
-            execute_command(cmd, outfile, 'frida')
+            execute_frida_command(self.config, self.temp_file, outfile, 'frida')
 
         found = find_command('frida', self.config["app"])
         if not found:
@@ -143,7 +141,7 @@ class Frida:
             self.copy_file("ios_biometrics")
             cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
             outfile = self.files['biometrics-ios']
-            execute_command(cmd, outfile, 'frida')
+            execute_frida_command(cmd, outfile, 'frida')
 
         found = find_command('frida', self.config["app"])
         if not found:
@@ -160,7 +158,7 @@ class Frida:
             self.copy_file("android_biometrics", api_version)
             cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
             outfile = self.files['biometrics-ios']
-            execute_command(cmd, outfile, 'frida')
+            execute_frida_command(cmd, outfile, 'frida')
 
         api_version = subprocess.run(f'{Constants.ADB.value} shell getprop ro.build.version.release'.split(), stdout=PIPE, stderr=DEVNULL).stdout.decode().strip().split('.')[0]
         print(Fore.BLUE + f'[*] Detected Android API v{api_version}' + Fore.RESET)
@@ -179,7 +177,7 @@ class Frida:
             self.copy_file("android_biometrics_crypto")
             cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
             outfile = self.files['biometrics-ios']
-            execute_command(cmd, outfile, 'frida')
+            execute_frida_command(cmd, outfile, 'frida')
 
         found = find_command('frida', self.config["app"])
         if not found:
@@ -196,7 +194,7 @@ class Frida:
             self.copy_file("ios_jailbreak_bypass")
             cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
             outfile = self.files['jailbreak-ios']
-            execute_command(cmd, outfile, 'frida')
+            execute_frida_command(cmd, outfile, 'frida')
 
         found = find_command('frida', self.config["app"])
         if not found:

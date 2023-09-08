@@ -1,10 +1,11 @@
 Java.perform(function() {
-    console.log("[+] Antiroot bypass [+]")
+    send("Attached")
+    send("[+] Antiroot bypass [+]")
 
-    console.log("[*] Hooking calls to System.exit");
+    send("[*] Hooking calls to System.exit");
     var exitClass = Java.use("java.lang.System");
     exitClass.exit.implementation = function(){
-        console.log("[*] System.exit called");
+        send("[*] System.exit called");
     }
 
     var RootPackages = ["com.noshufou.android.su", "com.noshufou.android.su.elite", "eu.chainfire.supersu",
@@ -400,7 +401,7 @@ function stackTraceHere(isLog){
     var Log = Java.use('android.util.Log');
     var stackinfo = Log.getStackTraceString(Exception.$new())
     if(isLog){
-        console.log(stackinfo)
+        send(stackinfo)
     }else{
         return stackinfo
     }
@@ -410,7 +411,7 @@ function stackTraceNativeHere(isLog){
     var backtrace = Thread.backtrace(this.context, Backtracer.ACCURATE)
     .map(DebugSymbol.fromAddress)
     .join("\n\t");
-    console.log(backtrace)
+    send(backtrace)
 }
 
 
@@ -423,12 +424,12 @@ function bypassJavaFileCheck(){
         const filename = file.getAbsolutePath();
 
         if (filename.indexOf("magisk") >= 0) {
-            console.log("Anti Root Detect - check file: " + filename)
+            send("Anti Root Detect - check file: " + filename)
             return false;
         }
 
         if (commonPaths.indexOf(filename) >= 0) {
-            console.log("Anti Root Detect - check file: " + filename)
+            send("Anti Root Detect - check file: " + filename)
             return false;
         }
 
@@ -445,7 +446,7 @@ function bypassNativeFileCheck(){
         onLeave:function(retval){
             if(retval.toInt32() != 0){
                 if (commonPaths.indexOf(this.inputPath) >= 0) {
-                    console.log("Anti Root Detect - fopen : " + this.inputPath)
+                    send("Anti Root Detect - fopen : " + this.inputPath)
                     retval.replace(ptr(0x0))
                 }
             }
@@ -460,7 +461,7 @@ function bypassNativeFileCheck(){
         onLeave:function(retval){
             if(retval.toInt32()==0){
                 if(commonPaths.indexOf(this.inputPath) >= 0){
-                    console.log("Anti Root Detect - access : " + this.inputPath)
+                    send("Anti Root Detect - access : " + this.inputPath)
                     retval.replace(ptr(-1))
                 }
             }
@@ -480,7 +481,7 @@ function setProp(){
 
     // Build.deriveFingerprint.inplementation = function(){
     //     var ret = this.deriveFingerprint() //该函数无法通过反射调用
-    //     console.log(ret)
+    //     send(ret)
     //     return ret
     // }
 
@@ -505,9 +506,9 @@ function setProp(){
 function bypassRootAppCheck(){
     var ApplicationPackageManager = Java.use("android.app.ApplicationPackageManager")
     ApplicationPackageManager.getPackageInfo.overload('java.lang.String', 'int').implementation = function(str,i){
-        // console.log(str)
+        // send(str)
         if (ROOTmanagementApp.indexOf(str) >= 0) {
-            console.log("Anti Root Detect - check package : " + str)
+            send("Anti Root Detect - check package : " + str)
             str = "ashen.one.ye.not.found"
         }
         return this.getPackageInfo(str,i)
@@ -523,13 +524,13 @@ function bypassShellCheck(){
     ProcessImpl.start.implementation = function(cmdarray,env,dir,redirects,redirectErrorStream){
 
         if(cmdarray[0] == "mount"){
-            console.log("Anti Root Detect - Shell : " + cmdarray.toString())
+            send("Anti Root Detect - Shell : " + cmdarray.toString())
             arguments[0] = Java.array('java.lang.String',[String.$new("")])
             return ProcessImpl.start.apply(this,arguments)
         }
 
         if(cmdarray[0] == "getprop"){
-            console.log("Anti Root Detect - Shell : " + cmdarray.toString())
+            send("Anti Root Detect - Shell : " + cmdarray.toString())
             const prop = [
                 "ro.secure",
                 "ro.debuggable"
@@ -545,7 +546,7 @@ function bypassShellCheck(){
                 "su"
             ];
             if(prop.indexOf(cmdarray[1]) >= 0){
-                console.log("Anti Root Detect - Shell : " + cmdarray.toString())
+                send("Anti Root Detect - Shell : " + cmdarray.toString())
                 arguments[0] = Java.array('java.lang.String',[String.$new("")])
                 return ProcessImpl.start.apply(this,arguments)
             }
@@ -556,7 +557,7 @@ function bypassShellCheck(){
 }
 
 
-console.log("Attach")
+send("Attach")
 bypassNativeFileCheck()
 bypassJavaFileCheck()
 setProp()

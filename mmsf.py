@@ -6,7 +6,7 @@ import readline
 import shlex
 from signal import signal, SIGINT
 from Classes.MassiveMobileSecurityFramework import MassiveMobileSecurityFramework
-from Classes.utils import listmodules, search, unknown_cmd
+from Classes.utils import listmodules, print_help, search, unknown_cmd
 from colorama import Fore
 
 def handler(signal_received, frame):
@@ -62,6 +62,8 @@ def main():
         elif input_val[0].lower() == "exit":
             quit()
         elif input_val[0].lower() == "listmodules":
+            # if mmsf._device_type == 'iOS':
+                # listiosonlymodules
             listmodules(list(modules_names), list(descriptions))
         elif input_val[0].lower() == "usemodule":
             if len(input_val) == 2:
@@ -76,6 +78,8 @@ def main():
             if len(input_val) == 2:
                 action = input_val[1].lower()
                 search(action, modules_dict)
+        elif input_val[0].lower() == "help" or input_val[0] == "?":
+            print_help()
 
 if __name__ == "__main__":
     signal(SIGINT, handler)

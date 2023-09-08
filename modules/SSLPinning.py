@@ -1,7 +1,7 @@
 import readline
 import shlex
 from Classes.constants import Constants
-from Classes.utils import back, listmodules, print_show_table, unknown_cmd, quit
+from Classes.utils import back, listmodules, print_help, print_show_table, unknown_cmd, quit
 from colorama import Fore
 
 class SSLPinning:
@@ -332,3 +332,5 @@ class SSLPinning:
             elif input_val[0].lower() == "back":
                 back()
                 break
+            elif input_val[0].lower() == "help" or input_val[0] == "?":
+                print_help()

@@ -1,15 +1,25 @@
+from threading import Thread
 from colorama import Fore
 from Classes.constants import Constants
 import subprocess
 import psutil
 import socket
-
+import frida
+import time
+import logging
 
 def display(commands):
     print("Available data: " + " ".join(commands))
 
 def back():
-    print(Fore.YELLOW + "Returning to previous menu ..."+ Fore.RESET)
+    pass
+
+def print_help():
+    print("Available commands:")
+    print("     exit            -> Quit the app")
+    print("     usemodule       -> Use a specific module")
+    print("     listmodules     -> List all availables modules")
+    print("     search          -> Search for a specific module")
 
 def quit():
     print(Fore.RED + "Quitting ..." + Fore.RESET)
@@ -149,6 +159,48 @@ def execute_command(cmd, stdout, tool):
     if not found:
         print(Fore.RED + '[-] Some error occured! Try again!' + Fore.RESET)
         return False
+
+def execute_frida_command(config_file, script_file, stdout, tool):
+    cmd = f'frida {config_file["mode"]} {config_file["method"]} {config_file["app"]} -l {script_file} {config_file["pause"]}'
+    print(Fore.YELLOW + "Command used: " + cmd + Fore.RESET)
+    print(Fore.YELLOW + "Logging to: " + stdout + Fore.RESET)
+
+    def on_message(msg, _data):
+        with open(stdout, 'a') as f:
+            f.writelines(msg['payload'])
+            f.write('\n')
+
+    # check mode
+    if config_file["mode"] == "-U":
+        device = frida.get_usb_device()
+    else:
+        subprocess.call(f'{Constants.ADB.value} connect {config_file["host"]}')
+        device = frida.get_remote_device()
+        
+    # check method
+    if config_file["method"] == "-f":
+        pid = device.spawn([config_file["app"]])
+    else:
+        pid = device.get_frontmost_application().pid
+
+    device.resume(pid)
+    time.sleep(1) #Without it Java.perform silently fails
+    session = device.attach(pid)
+    script = session.create_script(open(script_file).read())
+    script.on("message", on_message)
+    script.load()
+
+    found = False
+    with open(stdout, 'r') as f:
+        if any("Attached" in x for x in f.readlines()):
+            print(Fore.GREEN + '[+] Command executed successfully' + Fore.RESET)
+            found = True
+            return True
+        
+    if not found:
+        print(Fore.RED + '[-] Some error occured! Try again!' + Fore.RESET)
+        return False
+
     
 def find_command(cmd, search_word):
     found = False

