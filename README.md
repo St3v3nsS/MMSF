@@ -7,20 +7,17 @@ Massive Mobile Security Framework or MMSF is a mobile framework that combines fu
 git clone https://github.com/St3v3nsS/MMSF.git
 cd MMSF
 python3 -m pip install -r requirements.txt
-```
-
-# First run
-
-```bash
 python3 mmsfupdate.py
-python3 mmsf.py
 ```
+
+![Usage]()
 
 # Usage
 
 Short example of how you can interact with the tool. 
 
 ```bash
+$ python3 mmsf.py 
 mmsf> listmodules
 mmsf> usemodule rootdetection
 mmsf (rootdetection)> usemodule frida

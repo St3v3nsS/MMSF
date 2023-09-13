@@ -14,6 +14,16 @@ def handler(signal_received, frame):
     print('SIGINT or CTRL-C detected. Type \'exit\' to exit')
 
 def init_modules():
+    print("""
+   *       *     (    (    
+ (  `    (  `    )\ ) )\ ) 
+ )\))(   )\))(  (()/((()/( 
+((_)()\ ((_)()\  /(_))/(_))
+(_()((_)(_()((_)(_)) (_))_|
+|  \/  ||  \/  |/ __|| |_  
+| |\/| || |\/| |\__ \| __| 
+|_|  |_||_|  |_||___/|_| 
+           """)
     print(Fore.GREEN + '... Initiating modules ...' + Fore.RESET)
     modules = []
     __path__ = [os.path.dirname(os.path.abspath(__file__)) + '/modules']
