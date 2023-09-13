@@ -10,7 +10,7 @@ python3 -m pip install -r requirements.txt
 python3 mmsfupdate.py
 ```
 
-![Usage]()
+![Usage](https://github.com/St3v3nsS/MMSF/blob/main/images/usage.gif)
 
 # Usage
 
