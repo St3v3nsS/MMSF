@@ -60,7 +60,7 @@ class Installer:
         try:
             print(Fore.BLUE + '[*] Checking for ' + cmd + Fore.RESET)
             p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
-            if 'Unable to find image' in p.stderr.decode():
+            if 'Unable to find image' in p.stderr.decode() or 'Unable to access jarfile' in p.stderr.decode():
                 print(Fore.RED + '[-] Not installed ' + Fore.RESET )
                 return False
             print(Fore.GREEN + '[+] Installed' + Fore.RESET)
@@ -165,7 +165,8 @@ class Installer:
             subprocess.run([Constants.ADB.value, 'shell', 'chmod +x /tmp/frida-server'], stderr=DEVNULL, stdout=DEVNULL)
 
     def _install_abe(self):
-        installed = True
+        abe_cmd = f'java -jar {os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar")}'
+        installed = self._check_installed(abe_cmd)
         if self.forced or not installed:
             print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
             url = "https://github.com/nelenkov/android-backup-extractor/releases/"

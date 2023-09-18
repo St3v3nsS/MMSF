@@ -45,7 +45,7 @@ class MassiveMobileSecurityFramework:
         self.__init_frameworks()
 
     def __check_prerequisites(self):
-        packages = ['apktool', 'apksigner', 'java', Constants.DROZER.value, 'reflutter', 'objection', 'frida']
+        packages = ['apktool', 'apksigner', 'java', Constants.DROZER.value, 'reflutter', 'objection', 'frida', f'java -jar {os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar")}']
         not_installed = []
         for package in packages:
             try:
@@ -77,17 +77,19 @@ class MassiveMobileSecurityFramework:
             if resp.lower() == 'n':
                 print(Fore.RED + '[-] Exitting' + Fore.RESET)
                 exit(1)
-        
-        self._frida = Frida(low_power_mode)
-        self._objection = objection(low_power_mode)
-        if self.is_ios():
-            return
-        self._other_tools = OtherTools(low_power_mode)
-        self._drozer = drozer(low_power_mode)
-        self._apktool = apktool(low_power_mode)
-        self._reflutter = reflutter(low_power_mode)        
-        self._all_apps = self.get_all_apps()
-        print(Fore.BLUE + '[*] Detected Android device' + Fore.RESET)
+        if low_power_mode:
+            print(Fore.YELLOW + "[*] Running in low power mode ..." + Fore.RESET)
+        else:
+            self._frida = Frida(low_power_mode)
+            self._objection = objection(low_power_mode)
+            if self.is_ios():
+                return
+            self._other_tools = OtherTools(low_power_mode)
+            self._drozer = drozer(low_power_mode)
+            self._apktool = apktool(low_power_mode)
+            self._reflutter = reflutter(low_power_mode)        
+            self._all_apps = self.get_all_apps()
+            print(Fore.BLUE + '[*] Detected Android device' + Fore.RESET)
 
         
     def __repr__(self) -> str:

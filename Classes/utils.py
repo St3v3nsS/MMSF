@@ -121,13 +121,19 @@ def check_alive_devices():
 
 def alive_android_devices():
     cmd = f'{Constants.ADB.value} devices -l'
-    p = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.decode().splitlines()
-    return len(p)>2
+    try:
+        p = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=5).stdout.decode().splitlines()
+        return len(p)>2
+    except subprocess.TimeoutExpired:
+        return False
 
 def alive_ios_devices():
     cmd = "frida-ps -U"
-    p = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.decode().splitlines()
-    return len(p) > 1
+    try:
+        p = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=5).stdout.decode().splitlines()
+        return len(p) > 1
+    except subprocess.TimeoutExpired:
+        return False
 
 def is_port_open(port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
