@@ -15,6 +15,20 @@ class Installer:
     def __init__(self, forced=False) -> None:
         self.packages = ['apktool', 'apksigner', 'java', 'drozer', 'reflutter', 'objection', 'frida', 'abe']
         self._forced = forced
+        self.__init_dirs()
+
+    def __mkdir(self, path):
+        if not os.path.isdir(path):
+            try:
+                os.mkdir(path)
+            except OSError as e:
+                print(Fore.LIGHTBLUE_EX + '[DEBUG] ' + e + Fore.RESET)
+
+    def __init_dirs(self):
+        print(Fore.YELLOW + '[*] Initiating directories' + Fore.RESET)
+        for path in (Constants):
+            if path.name.startswith('DIR_'):
+                self.__mkdir(path.value)
 
     @property
     def forced(self):
@@ -142,7 +156,7 @@ class Installer:
             print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
             try:
                 abi = subprocess.run([Constants.ADB.value, 'shell', 'getprop ro.product.cpu.abi'], stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()[0]
-                print(abi)
+                print(Fore.GREEN + f'[*] Downloading frida-server for {abi}' + Fore.RESET)
             except IndexError as e:
                 print(Fore.RED + '[-] Device not running. Power on the device first... Exitting...' + Fore.RESET)
                 quit()
@@ -157,10 +171,12 @@ class Installer:
                     break
             file_to_download = url + "/download/" + latest_ver + "/frida-server-" + latest_ver + "-android-" + abi + ".xz"
             frida_server = requests.get(file_to_download)
-            open(frida_path + '.xz', 'wb').write(frida_server.content)
+            frida_server_xz_path = frida_path + '.xz'
+            open(frida_server_xz_path, 'wb').write(frida_server.content)
 
             # Decompress frida server and push it to the mobile
-            subprocess.run(['xz', '-f', '-d', frida_path+'.xz'])
+            print(Fore.GREEN + f'[*] Decompressing the file and installing to device' + Fore.RESET)
+            subprocess.run(['xz', '-f', '-d', frida_server_xz_path])
             subprocess.run([Constants.ADB.value, 'push', frida_path, '/tmp/frida-server'], stderr=DEVNULL, stdout=DEVNULL)
             subprocess.run([Constants.ADB.value, 'shell', 'chmod +x /tmp/frida-server'], stderr=DEVNULL, stdout=DEVNULL)
 
