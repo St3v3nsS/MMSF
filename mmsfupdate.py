@@ -14,7 +14,7 @@ from Classes.constants import Constants
 
 class Installer:
     def __init__(self, forced=False) -> None:
-        self.packages = ['apktool', 'ubersigner', 'java', 'drozer', 'reflutter', 'objection', 'frida', 'abe', 'zipalign']
+        self.packages = ['apktool', 'ubersigner', 'java', 'drozer', 'reflutter', 'objection', 'frida', 'abe', 'zipalign', 'docker']
         self._forced = forced
         self.__init_dirs()
 
@@ -71,8 +71,9 @@ class Installer:
             self._install_frida_client()
         elif package == "zipalign":
             self._install_zipalign()
+        elif package == "docker":
+            self._install_docker()
         
-
     def _check_installed(self, cmd):
         try:
             print(Fore.BLUE + '[*] Checking for ' + cmd + Fore.RESET)
@@ -176,7 +177,9 @@ class Installer:
     def _check_frida_server(self):
         p = subprocess.run([Constants.ADB.value, 'shell', 'ls /tmp/frida-server'], capture_output=True)
         if "No such file" in p.stderr.decode() or "No such file" in p.stdout.decode():
-            return False
+            p1 = subprocess.run([Constants.ADB.value, 'shell', 'ls /data/local/tmp/frida-server'], capture_output=True)
+            if "No such file" in p1.stderr.decode() or "No such file" in p1.stdout.decode():
+                return False
         return True
 
     def _install_frida_client(self):
@@ -240,6 +243,71 @@ class Installer:
                     new_url = f"https://github.com/nelenkov/android-backup-extractor/releases/download/{latest_ver}/abe.jar"
                     open(os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar"), "wb").write(requests.get(new_url).content)
                     break
+
+    def _install_docker(self):
+        installed = self._check_installed("docker --version")
+        if self.forced or not installed:
+            def install_docker_ubuntu():
+                try:
+                    # Update the package list for upgrades and new package installations
+                    subprocess.check_call(['sudo', 'apt', 'update'])
+                    
+                    # Install required dependencies
+                    subprocess.check_call(['sudo', 'apt', 'install', '-y', 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common'])
+                    
+                    # Add Docker's official GPG key
+                    subprocess.check_call(['curl', '-fsSL', 'https://download.docker.com/linux/ubuntu/gpg', '|', 'sudo', 'gpg', '--dearmor', '-o', '/usr/share/keyrings/docker-archive-keyring.gpg'])
+                    
+                    # Set up the stable Docker repository
+                    subprocess.check_call(['echo', '"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu', '$(lsb_release -cs) stable"', '|', 'sudo', 'tee', '/etc/apt/sources.list.d/docker.list'])
+                    
+                    # Update the package list again
+                    subprocess.check_call(['sudo', 'apt', 'update'])
+                    
+                    # Install Docker
+                    subprocess.check_call(['sudo', 'apt', 'install', '-y', 'docker-ce', 'docker-ce-cli', 'containerd.io'])
+                    
+                    print(Fore.GREEN + "[+] Docker has been installed successfully." + Fore.RESET)
+                except subprocess.CalledProcessError as e:
+                    print(Fore.RED + f"[-] An error occurred: {e}" + Fore.RESET)
+
+            def install_docker_macbook():
+                def install_homebrew():
+                    try:
+                        # Install Homebrew
+                        subprocess.check_call(['/bin/bash', '-c', '$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)'])
+                        print(Fore.GREEN + "[+] Homebrew has been installed successfully." + Fore.RESET)
+                    except subprocess.CalledProcessError as e:
+                        print(Fore.RED + f"[-] An error occurred while installing Homebrew: {e}"+ Fore.RESET)
+
+                def install_docker():
+                    try:
+                        # Install Docker using Homebrew
+                        subprocess.check_call(['brew', 'install', 'docker'])
+                        print(Fore.GREEN + "[+] Docker has been installed successfully."+ Fore.RESET)
+                    except subprocess.CalledProcessError as e:
+                        print(Fore.RED + f"[-] An error occurred while installing Docker: {e}"+ Fore.RESET)
+
+                # Check if Homebrew is already installed
+                try:
+                    subprocess.check_output(['brew', '--version'])
+                except subprocess.CalledProcessError:
+                    print(Fore.RED + f"[-] Homebrew is not installed. Installing Homebrew..."+ Fore.RESET)
+                    install_homebrew()
+
+                # Install Docker using Homebrew
+                install_docker()
+
+            system_name = platform.system()
+            if system_name == "Darwin":
+                print(Fore.YELLOW + '[*] Installing docker' + Fore.RESET)
+                install_docker_macbook()
+            elif system_name == "Linux":
+                print(Fore.YELLOW + '[*] Installing docker' + Fore.RESET)
+                install_docker_ubuntu()
+            else:
+                print(Fore.RED + f"[-] The system is {system_name}, which is not macOS or Ubuntu." + Fore.RESET)
+                quit()
 
 if __name__ == "__main__":
     installer = Installer()
