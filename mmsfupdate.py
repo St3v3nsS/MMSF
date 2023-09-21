@@ -2,6 +2,7 @@
 
 from json import loads
 import os
+import platform
 import subprocess
 from subprocess import DEVNULL, PIPE
 import sys
@@ -13,7 +14,7 @@ from Classes.constants import Constants
 
 class Installer:
     def __init__(self, forced=False) -> None:
-        self.packages = ['apktool', 'apksigner', 'java', 'drozer', 'reflutter', 'objection', 'frida', 'abe']
+        self.packages = ['apktool', 'ubersigner', 'java', 'drozer', 'reflutter', 'objection', 'frida', 'abe', 'zipalign']
         self._forced = forced
         self.__init_dirs()
 
@@ -55,8 +56,8 @@ class Installer:
             self._install_apktool()
         elif package == "abe":
             self._install_abe()
-        elif package == "apksigner":
-            self._install_apksigner()
+        elif package == "ubersigner":
+            self._install_ubersigner()
         elif package == "java":
             self._install_java()
         elif package == "drozer":
@@ -68,6 +69,8 @@ class Installer:
         elif package == "frida":
             self._install_frida_server()
             self._install_frida_client()
+        elif package == "zipalign":
+            self._install_zipalign()
         
 
     def _check_installed(self, cmd):
@@ -98,11 +101,44 @@ class Installer:
             subprocess.run(['chmod', '+x', Constants.APKTOOL_JAR_PATH.value], stdout=DEVNULL, stderr=DEVNULL)
             subprocess.run(['chmod', '+x', Constants.APKTOOL_PATH.value], stdout=DEVNULL, stderr=DEVNULL)
 
-    def _install_apksigner(self):
-        installed = self._check_installed('apksigner')
+    def _install_ubersigner(self):
+        installed = self._check_installed(Constants.UBERSIGNER.value)
+        if not installed or self._forced:
+            print(Fore.YELLOW + '[*] Installing ubersigner' + Fore.RESET)
+            url = "https://github.com/patrickfav/uber-apk-signer/releases"
+            page = requests.get(f"{url}")
+            soup = BeautifulSoup(page.content, "html.parser")
+            classes = soup.find_all("a", class_="Link--primary")
+            latest = ""
+            for class_ in classes:
+                if class_.text.startswith("v"):
+                    latest = class_.text
+                    break
+            jar_url = f'{url}/download/{latest}/uber-apk-signer-{latest[1:]}.jar'
+            print(jar_url)
+            jar_file = requests.get(jar_url)
+            open(Constants.UBERSIGNER_PATH.value, 'wb').write(jar_file.content)
+            p = subprocess.run(Constants.UBERSIGNER.value.split(), stdout=PIPE, stderr=PIPE)
+            if "Error" in p.stderr.decode():
+                print(Fore.RED + '[-] Some error occured, please manually install it from https://github.com/patrickfav/uber-apk-signer/releases' + Fore.RESET)
+            else:
+                print(Fore.GREEN + '[+] Installed' + Fore.RESET)
+
+    def _install_zipalign(self):
+        installed = self._check_installed('zipalign')
+        if (platform.system() == "Darwin"):
+            cmd = f'find ~/Library/Android/sdk/build-tools -name "zipalign"'
+            p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
+            if "No such file or directory" in p.stderr.decode():
+                print(Fore.RED + '[-] Zipalign was not found. Please manually install it or export the path' + Fore.RED)
+                quit()
+            else:
+                zipalign = p.stdout.splitlines()[0]
+                print(Fore.BLUE + f'[*] Found the zipalign at {zipalign}' + Fore.RESET)
+                installed = True
         if not installed or self._forced:
             print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
-            subprocess.run(['sudo', 'apt-get', 'install', 'apksigner'], stderr=DEVNULL, stdout=DEVNULL)
+            subprocess.run(['sudo', 'apt-get', 'install','zipalign'])
 
     def _install_java(self):
         installed = self._check_installed('java')
@@ -211,9 +247,9 @@ if __name__ == "__main__":
         if sys.argv[1] == "apktool":
             installer.forced = True
             installer._install_apktool()
-        elif sys.argv[1] == "apksigner":
+        elif sys.argv[1] == "ubersigner":
             installer.forced = True
-            installer._install_apksigner()
+            installer._install_ubersigner()
         elif sys.argv[1] == "java":
             installer.forced = True
             installer._install_java()

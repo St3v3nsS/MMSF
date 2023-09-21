@@ -70,7 +70,7 @@ Here is a list of commands that you can use
 - [ ] Implement Autocomplete
 - [ ] Objection android bypass
 - [ ] Implement global module change like usemodule rootdetection/frida
-- [ ] Modify the signing method to ubersign
+- [x] Modify the signing method to ubersign
 - [ ] Add keystore checks
 - [x] Search command
 - [ ] Extract important strings from the app

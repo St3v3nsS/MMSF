@@ -70,13 +70,15 @@ class MassiveMobileSecurityFramework:
         return False
         
     def __init_frameworks(self):
-        low_power_mode = True
+        low_power_mode = False
         if not check_alive_devices():
             print(Fore.RED + "[-] No devices found!" + Fore.RESET)
             resp = str(input(Fore.YELLOW + "Do you want to continue without any device? You'll be limited in terms of capabilities! Y/N (default: N) " + Fore.RESET) or "N")
             if resp.lower() == 'n':
                 print(Fore.RED + '[-] Exitting' + Fore.RESET)
                 exit(1)
+            else:
+                low_power_mode = True
         if low_power_mode:
             print(Fore.YELLOW + "[*] Running in low power mode ..." + Fore.RESET)
         else:

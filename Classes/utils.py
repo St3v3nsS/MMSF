@@ -1,3 +1,4 @@
+import platform
 import re
 from threading import Thread
 from colorama import Fore
@@ -232,4 +233,16 @@ def search(cmd, data):
         if cmd in key:
             nice_print(data[key])
 
-    
+def zipalign():
+    if (platform.system() == "Darwin"):
+        cmd = f'find ~/Library/Android/sdk/build-tools -name "zipalign"'
+        p = subprocess.run(cmd.split(), stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        if "No such file or directory" in p.stderr.decode():
+            print(Fore.RED + '[-] Zipalign was not found. Please manually install it or export the path' + Fore.RED)
+            quit()
+        else:
+            zipalign = p.stdout.splitlines()[0]
+            print(Fore.BLUE + f'[*] Found the zipalign at {zipalign}' + Fore.RESET)
+            return f'{zipalign} -p -f 4'
+    elif (platform.system() == "Linux"):
+        return Constants.ZIPALIGN.value

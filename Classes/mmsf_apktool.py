@@ -6,6 +6,8 @@ from colorama import Fore
 from Classes.constants import Constants
 import xml.etree.ElementTree as ET
 
+from Classes.utils import zipalign
+
 
 class apktool:
     
@@ -67,20 +69,20 @@ class apktool:
         self._handle_errors(p)
         print(Fore.GREEN + '[+] APK generated to: ' + self._generated_apk + Fore.RESET)
 
+    def align_apk(self):
+        self._aligned_apk = f'{self._generated_apk[:-4]}_aligned.apk'
+        cmd = f'{zipalign()} {self._generated_apk} {self._aligned_apk}'
+        p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
+        self._handle_errors(p)
+
     def sign_apk(self):
         self.reconfigure(sign=True)
-        pwd = "123456"
-        keystore_path = os.path.join(Constants.DIR_UTILS_PATH.value ,'keystore.jsk')
-        if not os.path.isfile(keystore_path):
-            keytool_cmd = ['keytool', '-genkey', '-noprompt', '-keystore', keystore_path, '-alias', 'alias_name', '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000', '-storepass', pwd, '-keypass', pwd, '-dname', "CN=signer.com, OU=ID, O=IB, L=John, S=Doe, C=GB"]
-            p = subprocess.run(keytool_cmd, stderr=PIPE, stdout=PIPE)
-            self._handle_errors(p)
-            
-        else:
-            cmd_to_run = ['apksigner', 'sign', '--ks', keystore_path, '--out', self._patched_apk, self._generated_apk]
-            p = subprocess.run(cmd_to_run, input=pwd.encode('UTF-8'), stderr=PIPE, stdout=DEVNULL)
-            self._handle_errors(p)
-            print(Fore.GREEN + '[+] APK Signed: ' + self._patched_apk + Fore.RESET)
+        self.align_apk()
+        cmd_to_run = f"{Constants.UBERSIGNER.value} -a {self._aligned_apk}"
+        p = subprocess.run(cmd_to_run.split(), stderr=PIPE, stdout=DEVNULL)
+        self._handle_errors(p)
+        self._patched_apk = self._aligned_apk[:-4] + '-debugSigned.apk'
+        print(Fore.GREEN + '[+] APK Signed: ' + self._patched_apk + Fore.RESET)
 
     def install_apk(self):
         self.reconfigure()
