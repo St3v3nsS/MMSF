@@ -45,7 +45,7 @@ class MassiveMobileSecurityFramework:
         self.__init_frameworks()
 
     def __check_prerequisites(self):
-        packages = ['apktool', 'zipalign', Constants.UBERSIGNER.value, 'java', Constants.DROZER.value, 'reflutter', 'objection', 'frida', f'java -jar {os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar")}']
+        packages = ['apktool', Constants.UBERSIGNER.value, 'java', Constants.DROZER.value, 'reflutter', 'objection', 'frida', f'java -jar {os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar")}']
         not_installed = []
         for package in packages:
             try:
