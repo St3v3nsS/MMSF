@@ -26,3 +26,4 @@ class Constants(Enum):
     UBERSIGNER_PATH = f"{os.path.join(DIR_UTILS_PATH,'ubersigner.jar')}"
     UBERSIGNER = f"java -jar {UBERSIGNER_PATH}"
     ZIPALIGN = "zipalign -p -f 4"
+    ZIPALIGN_COMMON_DIRECTORIES = ["/usr/local/bin", "/usr/bin", "/bin", "/opt/local/bin", "/usr/sbin", "~/Library/Android/sdk/build-tools", "/sbin", "/Library/Android/sdk/build-tools"] 

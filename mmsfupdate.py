@@ -14,7 +14,7 @@ from Classes.constants import Constants
 
 class Installer:
     def __init__(self, forced=False) -> None:
-        self.packages = ['apktool', 'ubersigner', 'java', 'drozer', 'reflutter', 'objection', 'frida', 'abe', 'zipalign', 'docker']
+        self.packages = ['apktool', 'ubersigner', 'java', 'reflutter', 'objection', 'frida', 'abe', 'zipalign', 'docker', 'drozer']
         self._forced = forced
         self.__init_dirs()
 
@@ -75,8 +75,27 @@ class Installer:
             self._install_docker()
         
     def _check_installed(self, cmd):
+        def is_zipalign_installed():
+            # Check if zipalign is available in the system's PATH
+            try:
+                subprocess.check_output(['zipalign', '-version'], stderr=subprocess.STDOUT)
+                print(Fore.GREEN + '[+] Installed' + Fore.RESET)
+                return True
+            except subprocess.CalledProcessError:
+                pass
+
+            # Check common directories for zipalign
+            for directory in Constants.ZIPALIGN_COMMON_DIRECTORIES.value:
+                zipalign_path = os.path.join(os.path.expanduser(directory), "zipalign")
+                if os.path.isfile(zipalign_path):
+                    print(Fore.GREEN + '[+] Installed' + Fore.RESET)
+                    return True
+            return False
+        
         try:
             print(Fore.BLUE + '[*] Checking for ' + cmd + Fore.RESET)
+            if cmd == "zipalign":
+                return is_zipalign_installed()
             p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
             if 'Unable to find image' in p.stderr.decode() or 'Unable to access jarfile' in p.stderr.decode():
                 print(Fore.RED + '[-] Not installed ' + Fore.RESET )
@@ -127,19 +146,22 @@ class Installer:
 
     def _install_zipalign(self):
         installed = self._check_installed('zipalign')
-        if (platform.system() == "Darwin"):
-            cmd = f'find ~/Library/Android/sdk/build-tools -name "zipalign"'
-            p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
-            if "No such file or directory" in p.stderr.decode():
-                print(Fore.RED + '[-] Zipalign was not found. Please manually install it or export the path' + Fore.RED)
-                quit()
-            else:
-                zipalign = p.stdout.splitlines()[0]
-                print(Fore.BLUE + f'[*] Found the zipalign at {zipalign}' + Fore.RESET)
-                installed = True
         if not installed or self._forced:
-            print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
-            subprocess.run(['sudo', 'apt-get', 'install','zipalign'])
+            if (platform.system() == "Darwin"):
+                cmd = f'find {os.path.expanduser("~")}/Library/Android/sdk/build-tools -name "zipalign"'
+                p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
+                cmd2 = f'find /Library/Android/sdk/build-tools -name "zipalign"'
+                p1 = subprocess.run(cmd2.split(), stderr=PIPE, stdout=PIPE)
+                if "No such file or directory" in p.stderr.decode() or "No such file or directory" in p1.stderr.decode():
+                    print(Fore.RED + '[-] Zipalign was not found. Please manually install it or export the path' + Fore.RED)
+                    quit()
+                else:
+                    zipalign = p.stdout.splitlines()[0]
+                    print(Fore.BLUE + f'[*] Found the zipalign at {zipalign}' + Fore.RESET)
+                    installed = True
+            else:
+                print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
+                subprocess.run(['sudo', 'apt-get', 'install','zipalign'])
 
     def _install_java(self):
         installed = self._check_installed('java')
@@ -152,7 +174,9 @@ class Installer:
         installed = self._check_installed(Constants.DROZER.value)
         if not installed or self._forced:
             print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
-            p = subprocess.run('docker build --rm -t fsecure/drozer docker_files/drozer'.split(), stderr=PIPE, stdout=PIPE)
+            # subprocess.check_output(['docker', 'buildx', 'create', '--use'])
+            # p = subprocess.run(f'docker buildx build --platform=linux/amd64,linux/arm64/v8  --rm -t fsecure/drozer -f {os.getcwd()}/docker_files/drozer/Dockerfile .'.split(), stderr=PIPE, stdout=PIPE)
+            p = subprocess.run('docker pull fsecurelabs/drozer'.split(), stderr=PIPE, stdout=PIPE)
             if 'Successfully tagged fsecure/drozer:latest' in p.stdout.decode():
                 print(Fore.GREEN + '[*] Successfully installed drozer'  + Fore.RESET)
             else:
@@ -256,16 +280,75 @@ class Installer:
                     subprocess.check_call(['sudo', 'apt', 'install', '-y', 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common'])
                     
                     # Add Docker's official GPG key
-                    subprocess.check_call(['curl', '-fsSL', 'https://download.docker.com/linux/ubuntu/gpg', '|', 'sudo', 'gpg', '--dearmor', '-o', '/usr/share/keyrings/docker-archive-keyring.gpg'])
+                    curl_process = subprocess.Popen(['curl', '-fsSL', 'https://download.docker.com/linux/ubuntu/gpg'], stdout=subprocess.PIPE)
+                    gpg_process = subprocess.Popen(['sudo', 'gpg', '--dearmor', '-o', '/usr/share/keyrings/docker-archive-keyring.gpg'], stdin=curl_process.stdout)
+                    gpg_process.communicate()  # Wait for the processes to finish                    
                     
                     # Set up the stable Docker repository
-                    subprocess.check_call(['echo', '"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu', '$(lsb_release -cs) stable"', '|', 'sudo', 'tee', '/etc/apt/sources.list.d/docker.list'])
-                    
-                    # Update the package list again
+                    try:
+                        subprocess.check_call(['sudo', 'curl', '-fsSL', 'https://download.docker.com/linux/ubuntu/gpg', '|', 'sudo', 'gpg', '--dearmor', '-o', '/usr/share/keyrings/docker-archive-keyring.gpg'])
+                    except subprocess.CalledProcessError as e:
+                        print(f"An error occurred while adding Docker's GPG key: {e}")
+
+                    # Create a Docker repository file
+                    docker_repo = """
+                    deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable
+                    """
+                    try:
+                        subprocess.check_call(['sudo', 'sh', '-c', f'echo "{docker_repo}" > /etc/apt/sources.list.d/docker.list'])
+                    except subprocess.CalledProcessError as e:
+                        print(f"An error occurred while creating the Docker repository file: {e}")
+
+
+                    # Update the package list
+                    try:
+                        subprocess.check_call(['sudo', 'apt', 'update'])
+                    except subprocess.CalledProcessError as e:
+                        print(f"An error occurred while updating the package list: {e}")                    
+                                        # Update the package list again
                     subprocess.check_call(['sudo', 'apt', 'update'])
                     
                     # Install Docker
                     subprocess.check_call(['sudo', 'apt', 'install', '-y', 'docker-ce', 'docker-ce-cli', 'containerd.io'])
+                    
+                    # Download the buildx binary
+                    docker_buildx_url = "https://github.com/docker/buildx/releases"
+
+                    try:
+                        # Send an HTTP GET request to the releases page
+                        page = requests.get(docker_buildx_url)
+                        page.raise_for_status()
+
+                        # Parse the HTML content of the page
+                        soup = BeautifulSoup(page.content, "html.parser")
+
+                        # Find all <a> elements with class "Link--primary"
+                        link_elements = soup.find_all("a", class_="Link--primary")
+
+                        # Search for release versions in the text of the link elements
+                        latest = ""
+                        for class_ in link_elements:
+                            if class_.text.startswith("v"):
+                                latest = class_.text
+                                break
+                        buildx_version = latest
+                        print(f"The latest version of buildx is: {latest}")
+                        subprocess.check_output(['curl', '-L', '-o', '/tmp/buildx', f'https://github.com/docker/buildx/releases/download/{buildx_version}/buildx-{buildx_version}.linux-amd64'])
+
+
+                    except requests.exceptions.RequestException as e:
+                        print(f"An error occurred while fetching the page: {e}")
+                    except Exception as e:
+                        print(f"An error occurred: {e}")
+                    
+                    # Make the binary executable
+                    subprocess.check_output(['chmod', '+x', '/tmp/buildx'])
+                    
+                    # Move the binary to a directory in the PATH
+                    subprocess.check_output(['sudo', 'mv', '/tmp/buildx', '/usr/local/bin/buildx'])
+                    
+                    # Verify the installation
+                    subprocess.check_output(['buildx', 'version'])
                     
                     print(Fore.GREEN + "[+] Docker has been installed successfully." + Fore.RESET)
                 except subprocess.CalledProcessError as e:
@@ -284,6 +367,14 @@ class Installer:
                     try:
                         # Install Docker using Homebrew
                         subprocess.check_call(['brew', 'install', 'docker'])
+                                        # Check if Docker Desktop is installed
+                        subprocess.check_output(['docker', '--version'])
+                        
+                        # Enable experimental features in Docker Desktop
+                        subprocess.check_output(['docker', 'config', 'set', 'core.experimental', 'enabled'])
+                        
+                        # Create a new builder instance
+                        subprocess.check_output(['docker', 'buildx', 'create', '--use'])
                         print(Fore.GREEN + "[+] Docker has been installed successfully."+ Fore.RESET)
                     except subprocess.CalledProcessError as e:
                         print(Fore.RED + f"[-] An error occurred while installing Docker: {e}"+ Fore.RESET)
@@ -339,5 +430,11 @@ if __name__ == "__main__":
         elif sys.argv[1] == "abe":
             installer.forced = True
             installer._install_abe()
+        elif sys.argv[1] == "docker":
+            installer.forced = True
+            installer._install_docker()
+        elif sys.argv[1] == "zipalign":
+            installer.forced = True
+            installer._install_zipalign()
     else:
         installer.install_packages()

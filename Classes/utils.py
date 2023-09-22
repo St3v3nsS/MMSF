@@ -26,6 +26,7 @@ def print_help():
 def quit():
     print(Fore.RED + "Quitting ..." + Fore.RESET)
     for proc in psutil.process_iter():
+        pid = proc.pid
         try:
             if proc.name() == "systemd":
                 pid = proc.pid
