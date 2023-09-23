@@ -14,7 +14,7 @@ from Classes.constants import Constants
 
 class Installer:
 	def __init__(self, forced=False) -> None:
-		self.packages = ['apktool', 'ubersigner', 'java', 'reflutter', 'objection', 'frida', 'abe', 'zipalign', 'docker', 'drozer']
+		self.packages = ['docker', 'apktool', 'ubersigner', 'java', 'reflutter', 'objection', 'frida', 'abe', 'zipalign', 'drozer']
 		self._forced = forced
 		self.__init_dirs()
 
@@ -95,11 +95,24 @@ class Installer:
 						return True
 				
 				return False
+			
+		def is_drozer_installed():
+			image_name = 'fsecurelabs/drozer'
+			try:
+				# Run the `docker images` command to list installed images
+				output = subprocess.check_output(["docker", "images", image_name], universal_newlines=True)
+				# Check if the image is in the output
+				return image_name in output
+			except subprocess.CalledProcessError as e:
+				# If an error occurs (e.g., Docker not installed), return False
+				return False
 		
 		try:
 			print(Fore.BLUE + '[*] Checking for ' + cmd + Fore.RESET)
 			if cmd == "zipalign":
 				return is_zipalign_installed()
+			elif cmd == "drozer":
+				return is_drozer_installed()
 			p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
 			if 'Unable to find image' in p.stderr.decode() or 'Unable to access jarfile' in p.stderr.decode():
 				print(Fore.RED + '[-] Not installed ' + Fore.RESET )
@@ -175,17 +188,18 @@ class Installer:
 			subprocess.run(['sudo', 'apt-get', 'instal', 'default-jre'])
 
 	def _install_drozer(self):
-		installed = self._check_installed(Constants.DROZER.value)
+		installed = self._check_installed('drozer')
 		if not installed or self._forced:
 			print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
 			# subprocess.check_output(['docker', 'buildx', 'create', '--use'])
 			# p = subprocess.run(f'docker buildx build --platform=linux/amd64,linux/arm64/v8  --rm -t fsecure/drozer -f {os.getcwd()}/docker_files/drozer/Dockerfile .'.split(), stderr=PIPE, stdout=PIPE)
 			p = subprocess.run('docker pull fsecurelabs/drozer'.split(), stderr=PIPE, stdout=PIPE)
-			if 'Successfully tagged fsecure/drozer:latest' in p.stdout.decode():
+			if 'Successfully tagged fsecure/drozer:latest' in p.stdout.decode() or 'Downloaded newer image for fsecurelabs/drozer:latest' in p.stdout.decode():
 				print(Fore.GREEN + '[*] Successfully installed drozer'  + Fore.RESET)
 			else:
 				print(Fore.RED + p.stderr.decode() + Fore.RESET)
-
+		else:
+			print(Fore.GREEN + '[+] Installed' + Fore.RESET)
 	def _install_reflutter(self):
 		installed = self._check_installed('reflutter')
 		if not installed or self._forced:
