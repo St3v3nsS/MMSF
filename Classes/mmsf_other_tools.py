@@ -1,5 +1,6 @@
 import subprocess
 from subprocess import DEVNULL, PIPE
+import threading
 from time import sleep
 import time
 from colorama import Fore
@@ -60,12 +61,50 @@ class OtherTools:
         os.makedirs(os.path.dirname(self.backup_files["restore_tar"]), exist_ok=True)
 
     def _init_tools(self):
-        p = subprocess.run(self._abe.split(), stdout=PIPE, stderr=PIPE)
-        if not p.stdout or p.stderr:
-            print(Fore.RED + '[-] AndroidBackupExtractor is missing. Install the abe.jar file... Exitting... ')
-            quit()
-        else:
-            print(Fore.BLUE + '[*] ABE is running!' + Fore.RESET)
+        # Define the command to run ABE
+        abe_command = self._abe.split()
+
+        # Function to read and print a stream
+        def read_and_store_stream(stream, label, output_list):
+            for line in stream:
+                if isinstance(line, bytes):
+                    line = line.decode().strip()
+                output_list.append(line)
+
+        try:
+            # Start the ABE process
+            process = subprocess.Popen(abe_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+
+            # Create threads to capture and print stdout and stderr
+            stdout_output = []
+            stderr_output = []
+            stdout_thread = threading.Thread(target=read_and_store_stream, args=(process.stdout, "stdout", stdout_output))
+            stderr_thread = threading.Thread(target=read_and_store_stream, args=(process.stderr, "stderr", stderr_output))
+
+            # Start the threads
+            stdout_thread.start()
+            stderr_thread.start()
+
+            # Wait for the process to complete
+            return_code = process.wait()
+
+            # Wait for the threads to finish
+            stdout_thread.join()
+            stderr_thread.join()
+
+            # Check if "usage" is present in the output
+            combined_output = "\n".join(stdout_output + stderr_output)
+            if "usage" in combined_output.lower():
+                print(Fore.BLUE + '[*] ABE is running!' + Fore.RESET)
+            else:
+                print(Fore.RED + '[-] AndroidBackupExtractor is missing. Install the abe.jar file... Exiting... ' + Fore.RESET)
+                quit()
+
+        except FileNotFoundError as e:
+            # The ABE executable or JAR file was not found
+            print("AndroidBackupExtractor executable or JAR file not found:", str(e))
+        except Exception as e:
+            print("An error occurred:", str(e))
 
     # Get package list
     def get_package_list(self):
