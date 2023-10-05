@@ -14,9 +14,15 @@ from Classes.constants import Constants
 
 class Installer:
 	def __init__(self, forced=False) -> None:
+
 		self.packages = ['docker', 'apktool', 'ubersigner', 'java', 'reflutter', 'objection', 'frida', 'abe', 'zipalign', 'drozer']
 		self._forced = forced
 		self.__init_dirs()
+		self._install_dep()
+
+	def _install_dep(self):
+			print('[+] Installing python dependencies')
+			subprocess.check_call([sys.executable, "-m", "pip", "install", '-r', 'requirements.txt'])
 
 	def __mkdir(self, path):
 		if not os.path.isdir(path):
