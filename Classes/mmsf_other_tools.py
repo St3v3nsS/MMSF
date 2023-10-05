@@ -76,8 +76,7 @@ class OtherTools:
             process = subprocess.Popen(abe_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
             # Create threads to capture and print stdout and stderr
-            stdout_output = []
-            stderr_output = []
+            stdout_output, stderr_output = [], []
             stdout_thread = threading.Thread(target=read_and_store_stream, args=(process.stdout, "stdout", stdout_output))
             stderr_thread = threading.Thread(target=read_and_store_stream, args=(process.stderr, "stderr", stderr_output))
 
@@ -86,7 +85,7 @@ class OtherTools:
             stderr_thread.start()
 
             # Wait for the process to complete
-            return_code = process.wait()
+            process.wait()
 
             # Wait for the threads to finish
             stdout_thread.join()
@@ -102,9 +101,9 @@ class OtherTools:
 
         except FileNotFoundError as e:
             # The ABE executable or JAR file was not found
-            print("AndroidBackupExtractor executable or JAR file not found:", str(e))
+            print(Fore.RED + '[-] AndroidBackupExtractor executable or JAR file not found:' + str(e) + Fore.RESET)
         except Exception as e:
-            print("An error occurred:", str(e))
+            print(Fore.RED + '[-] An error occurred: ', str(e) + Fore.RESET)
 
     # Get package list
     def get_package_list(self):

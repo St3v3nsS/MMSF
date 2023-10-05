@@ -51,7 +51,7 @@ class objection:
     
     def __init_objection(self):
         p = subprocess.run(['objection'], stdout=PIPE, stderr=PIPE)
-        if not p.stdout or p.stderr:
+        if 'command not found' in p.stderr.decode().lower():
             print(Fore.RED + '[-] Objection is missing. Check your installation... Exitting... ')
             quit()
         else:
