@@ -199,8 +199,8 @@ class Installer:
 			print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
 			# subprocess.check_output(['docker', 'buildx', 'create', '--use'])
 			# p = subprocess.run(f'docker buildx build --platform=linux/amd64,linux/arm64/v8  --rm -t fsecure/drozer -f {os.getcwd()}/docker_files/drozer/Dockerfile .'.split(), stderr=PIPE, stdout=PIPE)
-			p = subprocess.run('docker pull fsecurelabs/drozer'.split(), stderr=PIPE, stdout=PIPE)
-			if 'Successfully tagged fsecure/drozer:latest' in p.stdout.decode() or 'Downloaded newer image for fsecurelabs/drozer:latest' in p.stdout.decode():
+			p = subprocess.run('docker pull withsecurelabs/drozer'.split(), stderr=PIPE, stdout=PIPE)
+			if 'Successfully tagged withsecurelabs/drozer:latest' in p.stdout.decode() or 'Downloaded newer image for withsecurelabs/drozer:latest' in p.stdout.decode():
 				print(Fore.GREEN + '[*] Successfully installed drozer'  + Fore.RESET)
 			else:
 				print(Fore.RED + p.stderr.decode() + Fore.RESET)

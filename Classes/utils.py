@@ -169,7 +169,7 @@ def execute_command(cmd, stdout, tool):
         print(Fore.RED + '[-] Some error occured! Try again!' + Fore.RESET)
         return False
 
-def execute_frida_command(config_file, script_file, stdout, tool):
+def execute_frida_command(config_file, script_file, stdout):
     cmd = f'frida {config_file["mode"]} {config_file["method"]} {config_file["app"]} -l {script_file} {config_file["pause"]}'
     print(Fore.YELLOW + "Command used: " + cmd + Fore.RESET)
     print(Fore.YELLOW + "Logging to: " + stdout + Fore.RESET)

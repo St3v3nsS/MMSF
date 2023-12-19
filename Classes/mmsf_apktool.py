@@ -162,3 +162,7 @@ class apktool:
         self.sign_apk()
         print(Fore.GREEN + '[*] Installing apk..' + Fore.RESET)
         self.install_apk()
+
+    def extract_strings(self, path_to_apk="default"):
+        self._decompile_apk(path_to_apk)
+        
