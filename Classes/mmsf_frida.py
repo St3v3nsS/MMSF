@@ -74,18 +74,19 @@ class Frida:
         print(Fore.BLUE + '[*] Frida is running' + Fore.RESET)
 
     def copy_file(self, type, api_v=''):
+        path = Constants.DIR_FRIDA_SCRIPTS.value
         if type == "ssl":
-            file = 'Frida_Scripts/bypass_ssl_pinning_various_methods.js'
+            file = os.path.join(path, 'bypass_ssl_pinning_various_methods.js')
         elif type == "root":
-            file = 'Frida_Scripts/antiroot_bypass.js'
+            file = os.path.join(path, 'antiroot_bypass.js')
         elif type == "ios_biometrics":
-            file = 'Frida_Scripts/Fingerprint_bypasses/fingerprint-bypass-ios.js'
+            file = os.path.join(path, 'Fingerprint_bypasses/fingerprint-bypass-ios.js')
         elif type == "android_biometrics":
-            file = f'Frida_Scripts/Fingerprint_bypasses/fingerprint-android-{api_v}.js'
+            file = os.path.join(path, f'Fingerprint_bypasses/fingerprint-android-{api_v}.js')
         elif type == "android_biometrics_crypto":
-            file = 'Frida_Scripts/Fingerprint_bypasses/fingerprint-bypass-via-exception-handling.js'
+            file = os.path.join(path, 'Fingerprint_bypasses/fingerprint-bypass-via-exception-handling.js')
         elif type == "ios_jailbreak_bypass":
-            file = 'Frida_Scripts/ios-jailbreak-detection-bypass.js'
+            file = os.path.join(path, 'ios-jailbreak-detection-bypass.js')
         else:
             file = tempfile.mkstemp(dir=self.temp_dir, suffix=".js")
         

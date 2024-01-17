@@ -1,5 +1,7 @@
 import readline
 import shlex
+
+from colorama import Fore
 from Classes.constants import Constants
 from Classes.utils import listmodules, print_help
 from Classes.utils import unknown_cmd
@@ -53,7 +55,13 @@ class DeepLink:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.open_deeplink(cmd, data)
+                    status = 0
+                    try:
+                        status = mmsf.open_deeplink(cmd, data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
 
@@ -112,7 +120,13 @@ class DeepLink:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.generate_jsinterface(cmd, data)
+                    status = 0
+                    try:
+                        status = mmsf.generate_jsinterface(cmd, data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
 
@@ -185,7 +199,13 @@ class DeepLink:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.generate_deeplink(cmd, data)
+                    status = 0
+                    try:
+                        status = mmsf.generate_deeplink(cmd, data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
 

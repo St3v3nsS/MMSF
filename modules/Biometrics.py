@@ -1,8 +1,11 @@
 import readline
 import shlex
 
+from colorama import Fore
+
 from Classes.constants import Constants
 from Classes.utils import listmodules, print_help, unknown_cmd, back
+
 
 
 class Biometrics:
@@ -47,7 +50,13 @@ class Biometrics:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_ios_biometrics_frida(cmd,data)
+                    status = 0
+                    try:
+                        status = mmsf.bypass_ios_biometrics_frida(cmd,data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -119,7 +128,14 @@ class Biometrics:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_android_biometrics_frida(cmd,data)
+                    status = 0
+                    try:
+                        status = mmsf.bypass_android_biometrics_frida(cmd,data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
+
 
                 readline.set_completer(cmd_completer)
                 
@@ -187,7 +203,13 @@ class Biometrics:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_ios_biometrics_objection(cmd,data)
+                    status = 0
+                    try:
+                        status = mmsf.bypass_ios_biometrics_objection(cmd,data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
                 

@@ -1,6 +1,8 @@
 import os
 import readline
 import shlex
+
+from colorama import Fore
 from Classes.constants import Constants
 from Classes.utils import back, listmodules, print_help, unknown_cmd
 
@@ -48,7 +50,13 @@ class ExtractBackup:
 
                 # The commands to be executed
                 def execute(cmd, data):
-                    return mmsf.extract_backup(cmd, data)
+                    status = 0
+                    try:
+                        status = mmsf.extract_backup(cmd, data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
                     
                 readline.set_completer(cmd_completer)
 
@@ -116,7 +124,13 @@ class ExtractBackup:
 
                 # The commands to be executed
                 def execute(cmd, data):
-                    return mmsf.restore_backup(cmd, data)
+                    status = 0
+                    try:
+                        status = mmsf.restore_backup(cmd, data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
                     
                 readline.set_completer(cmd_completer)
 

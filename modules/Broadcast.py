@@ -55,7 +55,13 @@ class Broadcast:
                     return None
 
             def execute(cmd, data):
-                return mmsf.send_broadcast(cmd, data)
+                status = 0
+                try:
+                    status = mmsf.send_broadcast(cmd, data)
+                except Exception as e:
+                    print(Fore.RED + '[-] '+ e + Fore.RESET)
+                finally:
+                    return status
 
             readline.set_completer(cmd_completer)
             extra = []

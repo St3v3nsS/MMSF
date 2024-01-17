@@ -1,5 +1,7 @@
 import readline
 import shlex
+
+from colorama import Fore
 from Classes.constants import Constants
 
 from Classes.utils import back, listmodules, print_help, unknown_cmd
@@ -47,7 +49,13 @@ class RootDetection:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_root_frida(cmd,data)
+                    status = 0
+                    try:
+                        status = mmsf.bypass_root_frida(cmd,data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -115,7 +123,13 @@ class RootDetection:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_root_objection_android(cmd,data)
+                    status = 0
+                    try:
+                        status = mmsf.bypass_root_objection_android(cmd,data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
                 

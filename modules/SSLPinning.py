@@ -46,7 +46,13 @@ class SSLPinning:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_ssl_frida(cmd,data)
+                    status = 0
+                    try:
+                        status = mmsf.bypass_ssl_frida(cmd,data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -116,8 +122,13 @@ class SSLPinning:
                 def execute(cmd):
                     if cmd == "run": 
                         if mmsf._objection.config["app"]:
-                            mmsf.bypass_ssl_objection()
-                            return 1
+                            status = 0
+                            try:
+                                status = mmsf.bypass_ssl_objection()
+                            except Exception as e:
+                                print(Fore.RED + '[-] '+ e + Fore.RESET)
+                            finally:
+                                return status
                         else:
                             print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                             return 0              
@@ -182,7 +193,13 @@ class SSLPinning:
                         return None
 
                 def execute(cmd, data):
-                    return mmsf.bypass_network_config(cmd, data)
+                    status = 0
+                    try:
+                        status = mmsf.bypass_network_config(cmd, data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] '+ e + Fore.RESET)
+                    finally:
+                        return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -238,8 +255,13 @@ class SSLPinning:
                 def execute(cmd):
                     if cmd == "run": 
                         if mmsf.flutter["app"]:
-                            mmsf.reflutter_sslpinning()
-                            return 1
+                            status = 0
+                            try:
+                                status = mmsf.reflutter_sslpinning()
+                            except Exception as e:
+                                print(Fore.RED + '[-] '+ e + Fore.RESET)
+                            finally:
+                                return status
                         else:
                             print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                             return 0              

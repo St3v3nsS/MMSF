@@ -1,6 +1,7 @@
 import os
 import subprocess
 from subprocess import DEVNULL, PIPE
+import time
 
 from Classes.commands import Commands
 from .constants import Constants
@@ -127,19 +128,23 @@ class drozer:
 
     def __start_agent(self):
         try:
-            p = subprocess.run([Constants.ADB.value] + 'shell su am start -n com.mwr.dz/.activities.MainActivity'.split(), stderr=PIPE, stdout=PIPE)
+            p = subprocess.run([Constants.ADB.value] + 'shell su -c "am start -n com.mwr.dz/.activities.MainActivity"'.split(), stderr=PIPE, stdout=PIPE)
+            time.sleep(2)
             p = subprocess.run([Constants.ADB.value, 'shell', 'su', '-c "am startservice -n com.mwr.dz/.services.ServerService -c com.mwr.dz.START_EMBEDDED"'], stderr=PIPE, stdout=PIPE)
+            time.sleep(2)
             return p.stderr.decode().splitlines()
-        except Exception:
-            return ["Not Found"]
+        except Exception as e:
+            print(e)
+            return e
 
     def __adb_forward_tcp(self):
         subprocess.run([Constants.ADB.value, 'forward', 'tcp:31415', 'tcp:31415'], stderr=DEVNULL, stdout=DEVNULL)
 
     def __init_drozer(self):
-        if not self.__check_is_running():
-            print(Fore.RED + "[-] Drozer is not running... Trying to wake the Agent... "+ Fore.RESET)
+        while not self.__check_is_running():
+            print(Fore.RED + "[-] Drozer is not running... Trying to wake the Agent... " + Fore.RESET)
             stderr = self.__start_agent()
+
             if stderr:
                 print(Fore.RED + "[-] Drozer Agent is not installed on the phone. Installing ..." + Fore.RESET)
                 self.__download_agent()
@@ -148,8 +153,9 @@ class drozer:
                 self.__adb_forward_tcp()
             else:
                 self.__adb_forward_tcp()
-        else:
-            print(Fore.BLUE + "[*] Drozer Agent is running!" + Fore.RESET)
+                
+        print(Fore.BLUE + "[*] Drozer Agent is running!" + Fore.RESET)
+        subprocess.run(f'{Constants.ADB.value} shell input keyevent 3'.split())
 
     def __download_agent(self): 
         url = "https://github.com/WithSecureLabs/drozer-agent/releases/download/2.5.2/agent-debug.apk"

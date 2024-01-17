@@ -1,5 +1,7 @@
 import readline
 import shlex
+
+from colorama import Fore
 from Classes.constants import Constants
 
 
@@ -46,7 +48,13 @@ class SniffBroadcast:
                     return None
 
             def execute(cmd, data):
-                return mmsf.sniff_broadcast_data(cmd, data)
+                status = 0
+                try:
+                    status = mmsf.sniff_broadcast_data(cmd, data)
+                except Exception as e:
+                    print(Fore.RED + '[-] '+ e + Fore.RESET)
+                finally:
+                    return status
 
             readline.set_completer(cmd_completer)
             data = shlex.split(input('mmsf (sniff)> '))

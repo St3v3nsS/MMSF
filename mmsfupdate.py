@@ -11,6 +11,7 @@ from colorama import Fore
 import requests
 from Classes.utils import quit
 from Classes.constants import Constants
+from distutils.dir_util import copy_tree
 
 class Installer:
 	def __init__(self, forced=False) -> None:
@@ -103,7 +104,7 @@ class Installer:
 				return False
 			
 		def is_drozer_installed():
-			image_name = 'fsecurelabs/drozer'
+			image_name = 'withsecurelabs/drozer'
 			try:
 				# Run the `docker images` command to list installed images
 				output = subprocess.check_output(["docker", "images", image_name], universal_newlines=True)
@@ -206,6 +207,7 @@ class Installer:
 				print(Fore.RED + p.stderr.decode() + Fore.RESET)
 		else:
 			print(Fore.GREEN + '[+] Installed' + Fore.RESET)
+	
 	def _install_reflutter(self):
 		installed = self._check_installed('reflutter')
 		if not installed or self._forced:
@@ -424,8 +426,14 @@ class Installer:
 				print(Fore.RED + f"[-] The system is {system_name}, which is not macOS or Ubuntu." + Fore.RESET)
 				quit()
 
+	def copy_frida_scripts(self):
+		path = Constants.DIR_FRIDA_SCRIPTS.value
+		self.__mkdir(path)
+		copy_tree('Frida_Scripts', path)
+
 if __name__ == "__main__":
 	installer = Installer()
+	installer.copy_frida_scripts()
 	if len(sys.argv) > 1:
 		if sys.argv[1] == "apktool":
 			installer.forced = True

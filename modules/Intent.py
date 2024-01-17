@@ -55,7 +55,13 @@ class Intent:
                     return None
 
             def execute(cmd, data):
-                return mmsf.start_activity(cmd, data)
+                status = 0
+                try:
+                    status = mmsf.start_activity(cmd, data)
+                except Exception as e:
+                    print(Fore.RED + '[-] '+ e + Fore.RESET)
+                finally:
+                    return status
 
             readline.set_completer(cmd_completer)
             extra = []

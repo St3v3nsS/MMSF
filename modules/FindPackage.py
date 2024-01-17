@@ -1,5 +1,7 @@
 import readline
 import shlex
+
+from colorama import Fore
 from Classes.constants import Constants
 from Classes.utils import back, unknown_cmd
 
@@ -42,7 +44,13 @@ class FindPackage:
                     return None
 
             def execute(cmd, data):
-                return mmsf.find_app(cmd, data)
+                status = 0
+                try:
+                    status = mmsf.find_app(cmd, data)
+                except Exception as e:
+                    print(Fore.RED + '[-] '+ e + Fore.RESET)
+                finally:
+                    return status
 
             readline.set_completer(cmd_completer)
 

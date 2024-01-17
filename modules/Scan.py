@@ -1,5 +1,7 @@
 import readline
 import shlex
+
+from colorama import Fore
 from Classes.constants import Constants
 from Classes.utils import back, unknown_cmd
 
@@ -43,7 +45,13 @@ class Scan:
 
             # The commands to be executed
             def execute(cmd, data):
-                return mmsf.run_all(cmd, data)
+                status = 0
+                try:
+                    status = mmsf.run_all(cmd, data)
+                except Exception as e:
+                    print(Fore.RED + '[-] '+ e + Fore.RESET)
+                finally:
+                    return status
                 
             readline.set_completer(cmd_completer)
 

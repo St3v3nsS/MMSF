@@ -9,6 +9,7 @@ class Constants(Enum):
     DIR_WORKINGDIR = os.path.join(DIR_HOMEDIR, '.mmsf')
     DIR_INSTALLDIR = "/opt/mmsf/"
     DIR_LOOT_PATH = os.path.join(DIR_WORKINGDIR, 'loot')
+    DIR_FRIDA_SCRIPTS = os.path.join(DIR_WORKINGDIR, 'Frida_Scripts')
     DIR_UTILS_PATH = os.path.join(DIR_WORKINGDIR, 'utils')
     DIR_PULLED_APKS = os.path.join(DIR_LOOT_PATH, 'apks')
     DIR_LOOT_DATA = os.path.join(DIR_LOOT_PATH, 'data')
@@ -22,7 +23,7 @@ class Constants(Enum):
     PCKLIST_NAME = "package.list"
     BACKUP_NAME = "backup.ab"
     BACKUP_COMPRESSED_NAME = "backup.tar"
-    DROZER = "docker run --network host --rm -it fsecure/drozer drozer"
+    DROZER = "docker run --network host --rm -it withsecurelabs/drozer"
     UBERSIGNER_PATH = f"{os.path.join(DIR_UTILS_PATH,'ubersigner.jar')}"
     UBERSIGNER = f"java -jar {UBERSIGNER_PATH}"
     ZIPALIGN = "zipalign -p -f 4"
