@@ -3,20 +3,21 @@
 from json import loads
 import os
 import platform
+import shutil
 import subprocess
 from subprocess import DEVNULL, PIPE
 import sys
 from bs4 import BeautifulSoup
 from colorama import Fore
 import requests
-from Classes.utils import quit
+from Classes.utils import quit_app
 from Classes.constants import Constants
 from distutils.dir_util import copy_tree
 
 class Installer:
 	def __init__(self, forced=False) -> None:
 
-		self.packages = ['docker', 'apktool', 'ubersigner', 'java', 'reflutter', 'objection', 'frida', 'abe', 'zipalign', 'drozer']
+		self.packages = ['docker', 'apktool', 'ubersigner', 'java', 'reflutter', 'objection', 'frida', 'abe', 'zipalign', 'drozer', 'nuclei']
 		self._forced = forced
 		self.__init_dirs()
 		self._install_dep()
@@ -80,6 +81,8 @@ class Installer:
 			self._install_zipalign()
 		elif package == "docker":
 			self._install_docker()
+		elif package == "nuclei":
+			self._install_nuclei()
 		
 	def _check_installed(self, cmd):
 		def is_zipalign_installed():
@@ -178,7 +181,7 @@ class Installer:
 				p1 = subprocess.run(cmd2.split(), stderr=PIPE, stdout=PIPE)
 				if "No such file or directory" in p.stderr.decode() or "No such file or directory" in p1.stderr.decode():
 					print(Fore.RED + '[-] Zipalign was not found. Please manually install it or export the path' + Fore.RED)
-					quit()
+					quit_app()
 				else:
 					zipalign = p.stdout.splitlines()[0]
 					print(Fore.BLUE + f'[*] Found the zipalign at {zipalign}' + Fore.RESET)
@@ -248,7 +251,7 @@ class Installer:
 				print(Fore.GREEN + f'[*] Downloading frida-server for {abi}' + Fore.RESET)
 			except IndexError as e:
 				print(Fore.RED + '[-] Device not running. Power on the device first... Exitting...' + Fore.RESET)
-				quit()
+				quit_app()
 			url = "https://github.com/frida/frida/releases"
 			page = requests.get(url)
 			soup = BeautifulSoup(page.content, "html.parser")
@@ -424,12 +427,54 @@ class Installer:
 				install_docker_ubuntu()
 			else:
 				print(Fore.RED + f"[-] The system is {system_name}, which is not macOS or Ubuntu." + Fore.RESET)
-				quit()
+				quit_app()
 
 	def copy_frida_scripts(self):
 		path = Constants.DIR_FRIDA_SCRIPTS.value
 		self.__mkdir(path)
 		copy_tree('Frida_Scripts', path)
+		
+
+	def _install_nuclei(self):
+		nuclei_cmd = f'{Constants.NUCLEI.value} -version'
+		installed = self._check_installed(nuclei_cmd)
+		if self.forced or not installed:
+			print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
+			if not self._check_installed("go version"):
+				print(Fore.RED + '[*] GO is not installed. Visit https://go.dev/doc/install to install it.' + Fore.RESET)
+				quit_app()
+			else:
+				# Install anew
+				cmd = 'go get -u github.com/tomnomnom/anew'
+				subprocess.run(cmd.split())
+
+				# Install nuclei
+				cmd = 'go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest'
+				subprocess.run(cmd.split())
+
+				# Install nuclei Templates for Mobile
+				repo_url = "https://github.com/optiv/mobile-nuclei-templates.git"
+				destination_path = Constants.DIR_UTILS_PATH.value  # Replace with the desired path
+
+				if os.path.exists(Constants.DIR_NUCLEI_SCRIPTS.value):
+					shutil.rmtree(Constants.DIR_NUCLEI_SCRIPTS.value)
+
+				# Change the current working directory to the destination path
+				os.chdir(destination_path)
+
+				try:
+					# Run the git clone command
+					subprocess.run(["git", "clone", repo_url], stdout=DEVNULL, stderr=DEVNULL)
+
+					print(Fore.GREEN +  f"[+] Repository cloned successfully into: {os.path.join(destination_path, 'mobile-nuclei-templates')}" + Fore.RESET)
+
+				except subprocess.CalledProcessError as e:
+					print(Fore.RED + f"[-] Error cloning repository: {e}" + Fore.RESET)
+
+				os.chdir(Constants.DIR_WORKINGDIR)
+
+		self._check_installed(nuclei_cmd)
+
 
 if __name__ == "__main__":
 	installer = Installer()
@@ -468,5 +513,8 @@ if __name__ == "__main__":
 		elif sys.argv[1] == "zipalign":
 			installer.forced = True
 			installer._install_zipalign()
+		elif sys.argv[1] == "nuclei":
+			installer.forced = True
+			installer._install_nuclei()
 	else:
 		installer.install_packages()

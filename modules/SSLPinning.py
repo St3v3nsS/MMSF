@@ -1,7 +1,7 @@
 import readline
 import shlex
 from Classes.constants import Constants
-from Classes.utils import back, listmodules, print_help, print_show_table, unknown_cmd, quit
+from Classes.utils import back, listmodules, print_help, print_show_table, unknown_cmd, quit_app
 from colorama import Fore
 
 class SSLPinning:
@@ -137,7 +137,7 @@ class SSLPinning:
                             {"name": "APP", "value": mmsf._objection.config["app"], "description": "The application package name: com.example.android"}])
                         return 0
                     elif cmd == "exit":
-                        quit()
+                        quit_app()
                     elif cmd == "back":
                         back()
                         return 2
@@ -271,7 +271,7 @@ class SSLPinning:
                             {"name": "BURP", "value": mmsf.flutter["burp"], "description": "The BurpSuite IP, default to 127.0.0.1", "required": False}])
                         return 0
                     elif cmd == "exit":
-                        quit()
+                        quit_app()
                     elif cmd == "back":
                         back()
                         return 2
@@ -334,7 +334,7 @@ class SSLPinning:
             if len(input_val) > 2:
                 unknown_cmd()
             elif input_val[0].lower() == "exit":
-                quit()
+                quit_app()
             elif input_val[0].lower() == "listmodules":
                 listmodules(modules, descriptions)
             elif input_val[0].lower() == "usemodule":

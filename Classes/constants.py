@@ -7,12 +7,14 @@ class Constants(Enum):
     ADB = "adb"
     DIR_HOMEDIR = os.path.expanduser('~')
     DIR_WORKINGDIR = os.path.join(DIR_HOMEDIR, '.mmsf')
-    DIR_INSTALLDIR = "/opt/mmsf/"
     DIR_LOOT_PATH = os.path.join(DIR_WORKINGDIR, 'loot')
     DIR_FRIDA_SCRIPTS = os.path.join(DIR_WORKINGDIR, 'Frida_Scripts')
     DIR_UTILS_PATH = os.path.join(DIR_WORKINGDIR, 'utils')
     DIR_PULLED_APKS = os.path.join(DIR_LOOT_PATH, 'apks')
     DIR_LOOT_DATA = os.path.join(DIR_LOOT_PATH, 'data')
+    DIR_NUCLEI_SCRIPTS = os.path.join(DIR_UTILS_PATH, 'mobile-nuclei-templates')
+    DIR_OTHER_FILES = os.path.join(DIR_UTILS_PATH, 'other_files')
+    DIR_NUCLEI_SCANS = os.path.join(DIR_LOOT_DATA, 'nuclei_scans')
     DIR_SCANS_PATH = os.path.join(DIR_LOOT_PATH, 'drozer_scans')
     GENERATED_APK = os.path.join(DIR_PULLED_APKS, 'base_unsigned.apk')
     PATCHED_APK = os.path.join(DIR_PULLED_APKS, 'base_patched.apk')
@@ -22,6 +24,7 @@ class Constants(Enum):
     NEWBACKUP_NAME = "newbackup.ab"
     PCKLIST_NAME = "package.list"
     BACKUP_NAME = "backup.ab"
+    NUCLEI = f'{os.path.join(os.environ.get("GOPATH"), "bin/nuclei")}'
     BACKUP_COMPRESSED_NAME = "backup.tar"
     DROZER = "docker run --network host --rm -it withsecurelabs/drozer"
     UBERSIGNER_PATH = f"{os.path.join(DIR_UTILS_PATH,'ubersigner.jar')}"

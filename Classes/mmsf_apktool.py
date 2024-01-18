@@ -123,7 +123,7 @@ class apktool:
 
 
         def write_xml_file():
-            shutil.copy(os.path.join(Constants.DIR_INSTALLDIR.value, 'apktool_files/network_security_config.xml'), path)
+            shutil.copy(os.path.join(Constants.DIR_OTHER_FILES.value, 'apktool_files/network_security_config.xml'), path)
 
         def modify():
             mytree = ET.parse(path)

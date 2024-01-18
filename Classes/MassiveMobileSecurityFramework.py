@@ -16,6 +16,7 @@ from Classes.mmsf_apktool import apktool
 from Classes.mmsf_frida import Frida
 from Classes.mmsf_objection import objection
 from Classes.mmsf_flutter import reflutter
+from Classes.mmsf_nuclei import nuclei
 from Classes.mmsf_other_tools import OtherTools
 from Classes.utils import *
 from modules import *
@@ -33,6 +34,7 @@ class MassiveMobileSecurityFramework:
     _apktool: apktool
     _other_tools: OtherTools
     _device_type: str
+    _nuclei:  nuclei
 
     @property
     def all_apps(self):
@@ -57,7 +59,7 @@ class MassiveMobileSecurityFramework:
             print(Fore.RED + "[-] " + package + ' is not installed!' + Fore.RESET)
         if len(not_installed):
             print(Fore.RED + "Please use mmsfupdate first!" + Fore.RESET)
-            quit()
+            quit_app()
         
     def is_ios(self):
         cmd = "frida-ps -U"
@@ -90,8 +92,9 @@ class MassiveMobileSecurityFramework:
             self._drozer = drozer(low_power_mode)
             self._apktool = apktool(low_power_mode)
             self._reflutter = reflutter(low_power_mode)        
-            self._all_apps = self.get_all_apps()
+            self._nuclei = nuclei(low_power_mode)
             print(Fore.BLUE + '[*] Detected Android device' + Fore.RESET)
+            self._all_apps = self.get_all_apps()
 
         
     def __repr__(self) -> str:
@@ -112,8 +115,8 @@ class MassiveMobileSecurityFramework:
     def __mkdir(self, path):
         if not os.path.isdir(path):
             try:
-                print(Fore.RED + "[-] Creating directory in /opt")
-                os.system(f"sudo mkdir {path}")
+                print(Fore.YELLOW + "[*] Creating directories ... " + Fore.RESET)
+                os.system(f"mkdir {path}")
             except OSError as e:
                 print(Fore.LIGHTBLUE_EX + '[DEBUG] ' + e + Fore.RESET)
 
@@ -150,7 +153,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "APP_NAME", "value": self._drozer.config["app_name"], "description": "The name of the application to be scanned."}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -190,7 +193,7 @@ class MassiveMobileSecurityFramework:
             print_show_table([{"name": "FILTER", "value": self._drozer.config["find_app_query"], "description": "The query used to find the apps."}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -214,7 +217,7 @@ class MassiveMobileSecurityFramework:
             {"name": "MIMETYPE", "value": self._drozer.activity["mimetype"], "description": "The mimetype passed to the intent", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -238,7 +241,7 @@ class MassiveMobileSecurityFramework:
             {"name": "MIMETYPE", "value": self._drozer.activity["mimetype"], "description": "The mimetype passed to the intent", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2   
@@ -257,7 +260,7 @@ class MassiveMobileSecurityFramework:
             print_show_table([{"name": "DATA_URI", "value": self._drozer.activity["deeplink"], "description": "The URI used to open the application as deeplink"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -282,7 +285,7 @@ class MassiveMobileSecurityFramework:
             {"name": "DATA_TYPE", "value": self._drozer.sniff_data["type"], "description": "The mimetype used in URI", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -307,7 +310,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "SELECTION-ARGS", "value": self._drozer.content_provider["selection_args"], "description": "The parameter to replace the '?' in the selection", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -329,7 +332,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "INSERT_VALUES", "value": self._drozer.content_provider["insert_values"], "description": "The values required for insert. Choose between string, boolean, double, float, integer, long, short. e.g: string pass pass"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -352,7 +355,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "SELECTION_ARGS", "value": self._drozer.content_provider["selection_args"], "description": "The parameter to replace the '?' in the selection"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -372,7 +375,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "URI", "value": self._drozer.content_provider["uri"], "description": "The Content Provider URI to be tested."}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -400,7 +403,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -426,7 +429,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "PATH", "value": self._apktool.config["path"], "description": "The location of the apk, default to ~/.mmsf/apks/", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -470,7 +473,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -489,7 +492,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "APP", "value": self._objection._config["app"], "description": "The application package name: com.example.android"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -510,7 +513,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "APK", "value": self._apktool.config["apk"], "description": "The target output name. Default to: base", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -531,7 +534,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "OUT_APK", "value": self._apktool.config["out_apk"], "description": "The target output name. Default to: base_patched.apk", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -552,7 +555,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "PATH", "value": self._apktool.config["path"], "description": "The path where the apk is located. Default to: ~/.mmsf/loot/apks", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -576,7 +579,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "NETWORK", "value": self._objection.config["network"], "description": "Include a network_security_config.xml file allowing for user added CA's to be trusted on Android 7+. Default to False", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -622,7 +625,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "APK", "value": self._apktool.config["apk"], "description": "The target output name. Default to: base", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -643,7 +646,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "PASSWORD", "value": self._other_tools.config["password"], "description": "The password used for backup encryption. Default to: None", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -664,7 +667,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "PASSWORD", "value": self._other_tools.config["password"], "description": "The password used for backup encryption. Default to: None", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -692,7 +695,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "POC_FILENAME", "value": self._other_tools._generate_deeplink_data["poc_filename"], "description": "The POC filename. Default to: launch.html", "required": False}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -717,7 +720,7 @@ class MassiveMobileSecurityFramework:
             ])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -749,7 +752,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -777,7 +780,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -798,7 +801,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "APP", "value": self._objection._config["app"], "description": "The application package name: com.example.android"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -837,7 +840,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "APP", "value": self._objection._config["app"], "description": "The application package name: com.example.ios"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
@@ -864,8 +867,58 @@ class MassiveMobileSecurityFramework:
                 {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
             return 0
         elif cmd == "exit":
-            quit()
+            quit_app()
         elif cmd == "back":
             back()
             return 2
     
+    def run_nuclei_scan(self, cmd, data):
+        self._nuclei.config = data
+        paths = ['Keys', 'Android']
+        decompiled = False
+        if cmd == "run":   
+            if self._nuclei.config["dir_name"]:
+                for path in paths:
+                    print(Fore.YELLOW + f"[*] Executing nuclei in background for {path} templates." + Fore.RESET)
+                    multiprocessing.Process(target=self._nuclei._start_scan, args=([path])).start()
+                return 1
+            elif self._nuclei.config["app_name"] and self._nuclei.config["app_name"] in self.all_apps:
+                def previous_decompilation():
+                    return os.path.isdir(os.path.join(Constants.DIR_PULLED_APKS.value,self._nuclei.config["app_name"]))
+
+                previous_decom = previous_decompilation()
+                decompiled = previous_decom
+                for path in paths:
+                    data_scan = {
+                        "dir_name": self._nuclei.config["app_name"],
+                        "app": self._nuclei.config["app_name"],
+                        "path": Constants.DIR_PULLED_APKS.value,
+                        "mode": "d",
+                        "apk": self._nuclei.config["app_name"],
+                        "out_apk": Constants.PATCHED_APK.value,
+                        "in_apk": Constants.GENERATED_APK.value,
+                    }
+                    if not decompiled or not previous_decom:
+                        self.getapk("run", data_scan)
+                        print(Fore.GREEN + '[*] Decompiling apk..' + Fore.RESET)
+                        self._apktool._decompile_apk(os.path.join(data_scan["path"],data_scan["apk"]))
+                        decompiled = True
+                        previous_decom = True
+                    print(Fore.YELLOW + f"[*] Executing nuclei in background for {path} templates." + Fore.RESET)
+                    multiprocessing.Process(target=self._nuclei._start_scan, args=([path])).start()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APP_NAME", "value": self._nuclei.config["app_name"], "description": "The application name in form of com.example.android. Omit it if you set the DIR_NAME", "required": False},
+                {"name": "OUT_DIR", "value": self._nuclei.config["out_dir"], "description": "The directory where scans are saved. Default to ~/.mmsf/loot/data/nuclei_scans", "required": False},
+                {"name": "DIR_NAME", "value": self._nuclei.config["dir_name"], "description": "The directory to be scanned. Omit it if you set the APP_NAME", "required": False},
+                {"name": "OUT_FILE", "value": self._nuclei.config["out_file"], "description": "The output of the nuclei. Default to app_name_nuclei_output", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2

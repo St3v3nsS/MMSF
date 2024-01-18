@@ -1,5 +1,6 @@
 import platform
 import re
+import sys
 from threading import Thread
 from colorama import Fore
 from Classes.constants import Constants
@@ -8,7 +9,6 @@ import psutil
 import socket
 import frida
 import time
-import logging
 
 def display(commands):
     print("Available data: " + " ".join(commands))
@@ -23,7 +23,7 @@ def print_help():
     print("     listmodules     -> List all availables modules")
     print("     search          -> Search for a specific module")
 
-def quit():
+def quit_app():
     print(Fore.RED + "Quitting ..." + Fore.RESET)
     for proc in psutil.process_iter():
         pid = proc.pid
@@ -37,7 +37,7 @@ def quit():
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
     print(Fore.RED + '[-] Done cleaning ... ')
-    exit(0)
+    quit(1)
 
 def unknown_cmd():
     print(Fore.RED + "[-] Unknown command" + Fore.RESET)
@@ -240,7 +240,7 @@ def zipalign():
         p = subprocess.run(cmd.split(), stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         if "No such file or directory" in p.stderr.decode():
             print(Fore.RED + '[-] Zipalign was not found. Please manually install it or export the path' + Fore.RED)
-            quit()
+            quit_app()
         else:
             zipalign = p.stdout.splitlines()[0]
             print(Fore.BLUE + f'[*] Found the zipalign at {zipalign}' + Fore.RESET)
