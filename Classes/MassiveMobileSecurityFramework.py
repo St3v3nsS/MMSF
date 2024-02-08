@@ -922,3 +922,59 @@ class MassiveMobileSecurityFramework:
         elif cmd == "back":
             back()
             return 2
+        
+    def nsuserdefaults_modify(self, cmd, data):
+        self._frida.config = data
+        if cmd == "run":
+            if self._frida.config["mode"] == '-R':
+                if not self._frida.config["host"]:
+                    print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                    return 0    
+            if self._frida.config["app"]:
+                self._frida.nsuserdefaults_modify()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE", "value": "SERIAL" if self._frida.config["mode"] == "-U" else "REMOTE", "description": "The Type of Connection with frida-server: Serial or Remote. Default set to Serial", "required": False},
+                {"name": "APP", "value": self._frida.config["app"], "description": "The application package name: com.example.android"},
+                {"name": "HOST", "value": self._frida.config["host"], "description": "If MODE set to Remote, specify HOST. Default set to 127.0.0.1", "required": False},
+                {"name": "PAUSE", "value": "TRUE" if self._frida.config["pause"] == "--pause" else "FALSE" , "description": "The application should be paused on start? Default set to FALSE", "required": False},
+                {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"},
+                {"name": "KEY", "value": self._frida.config["key"], "description": "The NSUserDefaults Key to be modified"},
+                {"name": "VALUE", "value": self._frida.config["value"], "description": "The newly value to be added to NSUserDefaults key"}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+        
+    def nsuserdefaults_retrieve(self, cmd, data):
+        self._frida.config = data
+        if cmd == "run":
+            if self._frida.config["mode"] == '-R':
+                if not self._frida.config["host"]:
+                    print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                    return 0    
+            if self._frida.config["app"]:
+                self._frida.nsuserdefaults_retrieve()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE", "value": "SERIAL" if self._frida.config["mode"] == "-U" else "REMOTE", "description": "The Type of Connection with frida-server: Serial or Remote. Default set to Serial", "required": False},
+                {"name": "APP", "value": self._frida.config["app"], "description": "The application package name: com.example.android"},
+                {"name": "HOST", "value": self._frida.config["host"], "description": "If MODE set to Remote, specify HOST. Default set to 127.0.0.1", "required": False},
+                {"name": "PAUSE", "value": "TRUE" if self._frida.config["pause"] == "--pause" else "FALSE" , "description": "The application should be paused on start? Default set to FALSE", "required": False},
+                {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2

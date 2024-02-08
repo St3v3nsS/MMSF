@@ -169,15 +169,11 @@ def execute_command(cmd, stdout, tool):
         print(Fore.RED + '[-] Some error occured! Try again!' + Fore.RESET)
         return False
 
-def execute_frida_command(config_file, script_file, stdout):
+def execute_frida_command(config_file, script_file, stdout, modify=False):
     cmd = f'frida {config_file["mode"]} {config_file["method"]} {config_file["app"]} -l {script_file} {config_file["pause"]}'
+
     print(Fore.YELLOW + "Command used: " + cmd + Fore.RESET)
     print(Fore.YELLOW + "Logging to: " + stdout + Fore.RESET)
-
-    def on_message(msg, _data):
-        with open(stdout, 'a') as f:
-            f.writelines(msg['payload'])
-            f.write('\n')
 
     # check mode
     if config_file["mode"] == "-U":
@@ -185,7 +181,7 @@ def execute_frida_command(config_file, script_file, stdout):
     else:
         subprocess.call(f'{Constants.ADB.value} connect {config_file["host"]}')
         device = frida.get_remote_device()
-        
+    
     # check method
     if config_file["method"] == "-f":
         pid = device.spawn([config_file["app"]])
@@ -194,10 +190,21 @@ def execute_frida_command(config_file, script_file, stdout):
 
     device.resume(pid)
     time.sleep(1) #Without it Java.perform silently fails
+
     session = device.attach(pid)
     script = session.create_script(open(script_file).read())
+
+    def on_message(msg, _data):
+        with open(stdout, 'a') as f:
+            f.writelines(msg['payload'])
+            f.write('\n')
+    
     script.on("message", on_message)
     script.load()
+
+    # for NSUserDefaults
+    if modify:
+        script.post({'type': 'start', 'key': config_file["key"], 'value': config_file["value"]})
 
     found = False
     with open(stdout, 'r') as f:

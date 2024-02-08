@@ -46,7 +46,9 @@ class Frida:
         self.files = {'ssl-android': os.path.join(self.temp_dir,'frida-ssl-android.log'), 
                       'root-android': os.path.join(self.temp_dir,'frida-root-android.log'), 
                       'biometrics-ios': os.path.join(self.temp_dir,'frida-biometrics-ios.log'),
-                      'jailbreak-ios': os.path.join(self.temp_dir,'frida-jailbreak-ios.log')}
+                      'jailbreak-ios': os.path.join(self.temp_dir,'frida-jailbreak-ios.log'),
+                      'nsuserdefaults-modify': os.path.join(self.temp_dir,'frida-nsuserdefaults-modify.log'),
+                      'nsuserdefaults-retrieve': os.path.join(self.temp_dir,'frida-nsuserdefaults-retrieve.log')}
         
         for file in self.files.keys():
             if (os.path.exists(self.files[file])):
@@ -87,6 +89,12 @@ class Frida:
             file = os.path.join(path, 'Fingerprint_bypasses/fingerprint-bypass-via-exception-handling.js')
         elif type == "ios_jailbreak_bypass":
             file = os.path.join(path, 'ios-jailbreak-detection-bypass.js')
+        elif type == "nsuserdefaults-modify":
+            file = os.path.join(path, 'nsuserdefaults-modify.js')
+            print(Fore.RED + file + Fore.RESET)
+        elif type == "nsuserdefaults-retrieve":
+            file = os.path.join(path, 'nsuserdefaults-retrieve.js')
+            print(Fore.RED + file + Fore.RESET)
         else:
             file = tempfile.mkstemp(dir=self.temp_dir, suffix=".js")
         
@@ -196,6 +204,46 @@ class Frida:
             cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
             outfile = self.files['jailbreak-ios']
             execute_frida_command(self.config)
+
+        found = find_command('frida', self.config["app"])
+        if not found:
+            exec_new()
+        else:
+            exec_running()
+
+    def nsuserdefaults_modify(self):
+        def exec_running():
+            self.copy_file("nsuserdefaults-modify")
+            self.config["method"] = "-F"
+            outfile = self.files['nsuserdefaults-modify']
+            execute_frida_command(self.config, self.temp_file, outfile, True)
+            # print(Fore.GREEN + '[+] The command was executed successfully!' + Fore.RESET)
+            
+        def exec_new():
+            self.copy_file("nsuserdefaults-modify")
+            cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
+            outfile = self.files['nsuserdefaults-modify']
+            execute_frida_command(self.config, self.temp_file, outfile, True)
+
+        found = find_command('frida', self.config["app"])
+        if not found:
+            exec_new()
+        else:
+            exec_running()
+
+    def nsuserdefaults_retrieve(self):
+        def exec_running():
+            self.copy_file("nsuserdefaults-retrieve")
+            self.config["method"] = "-F"
+            outfile = self.files['nsuserdefaults-retrieve']
+            execute_frida_command(self.config, self.temp_file, outfile, True)
+            # print(Fore.GREEN + '[+] The command was executed successfully!' + Fore.RESET)
+            
+        def exec_new():
+            self.copy_file("nsuserdefaults-retrieve")
+            cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
+            outfile = self.files['nsuserdefaults-retrieve']
+            execute_frida_command(self.config, self.temp_file, outfile, True)
 
         found = find_command('frida', self.config["app"])
         if not found:
