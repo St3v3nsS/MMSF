@@ -1,7 +1,9 @@
 # MMSF
-Massive Mobile Security Framework or MMSF is a mobile framework that combines functionalities from frida, objection, drozer and many more. 
+Massive Mobile Security Framework or MMSF is a mobile framework that combines functionalities from frida, objection, drozer, and many more. 
 
 # Installation
+
+Before running any of the following steps, please make sure that GO is installed and that the GOPATH is exported to your OS environment variables.
 
 ```bash
 git clone https://github.com/St3v3nsS/MMSF.git
@@ -34,12 +36,14 @@ MODULE                      |  DESCRIPTION
 biometrics                  |  Bypass Biometrics authentication on both iOS/Android
 broadcast                   |  Send a broadcast intent
 provider                    |  Exploit the exported content provider to extract data
+datastorage                 |  Exploit Different Data Storage Issues
 deeplink                    |  Launch a deeplink with supplied value or generate malicious files to steal sensitive data
 backup                      |  Extract or restore backup from Android Application
 find                        |  Find the package name of an application and/or its details by supplying a filter keyword
 handleapk                   |  Generate, sign, pull and install an APK
 intent                      |  Start an intent using supplied values like: extra values, action, mimetype or data
 jailbreakdetection          |  Bypass the ios Jailbreak detection mechanisms through different methods
+nuclei                      |  Run a nuclei scan against a directory or an APK.
 patchobjection              |  Patch IPA or APK
 rootdetection               |  Bypass the Android root detection mechanisms through different methods
 sslpinning                  |  Bypass the SSL Pinning mechanism through different methods
