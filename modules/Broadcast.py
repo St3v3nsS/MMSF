@@ -59,9 +59,8 @@ class Broadcast:
                 try:
                     status = mmsf.send_broadcast(cmd, data)
                 except Exception as e:
-                    print(Fore.RED + '[-] '+ e + Fore.RESET)
-                finally:
-                    return status
+                    print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                return status
 
             readline.set_completer(cmd_completer)
             extra = []

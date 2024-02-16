@@ -32,7 +32,6 @@ class nuclei:
         self.low_power_mode = low_power_mode     
 
     def _start_scan(self, path):
-        print(self.config)
         app_name = self.config.get('app_name') if self.config.get('app_name') else os.path.basename(os.path.normpath(self.config.get('dir_name')))
         filename = f"{app_name}_nuclei_scan_{path}.txt" if not self.config.get("out_file") else self.config.get("out_file")
         outdir = Constants.DIR_NUCLEI_SCANS.value if not self.config.get("out_dir") else os.path.join(self.config.get("out_dir"), 'nuclei_scans')

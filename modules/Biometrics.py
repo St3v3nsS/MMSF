@@ -54,9 +54,8 @@ class Biometrics:
                     try:
                         status = mmsf.bypass_ios_biometrics_frida(cmd,data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -132,10 +131,8 @@ class Biometrics:
                     try:
                         status = mmsf.bypass_android_biometrics_frida(cmd,data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
-
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -207,9 +204,8 @@ class Biometrics:
                     try:
                         status = mmsf.bypass_ios_biometrics_objection(cmd,data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -242,11 +238,11 @@ class Biometrics:
         def handle_objection():
             while True:
                 def init_completer(text, state):
-                        options = [i for i in ["ios", "android"] if i.startswith(text)]
-                        if state < len(options):
-                            return options[state]
-                        else:
-                            return None
+                    options = [i for i in ["ios", "android"] if i.startswith(text)]
+                    if state < len(options):
+                        return options[state]
+                    else:
+                        return None
 
                 readline.set_completer(init_completer)
 

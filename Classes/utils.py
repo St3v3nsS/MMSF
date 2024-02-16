@@ -1,14 +1,20 @@
+import os
 import platform
 import re
+import signal
 import sys
 from threading import Thread
+import threading
 from colorama import Fore
+from Classes.commands import Commands
 from Classes.constants import Constants
 import subprocess
 import psutil
 import socket
 import frida
 import time
+from multiprocessing import active_children
+
 
 def display(commands):
     print("Available data: " + " ".join(commands))
@@ -25,6 +31,15 @@ def print_help():
 
 def quit_app():
     print(Fore.RED + "Quitting ..." + Fore.RESET)
+    for thread in threading.enumerate():
+        if thread.name == "MainThread":
+            continue
+        else:
+            print(Fore.RED + '[-] Cleaning thread ' + thread.name + Fore.RESET)
+            thread.join()
+    children = active_children()
+    for child in children:
+        child.terminate()
     for proc in psutil.process_iter():
         pid = proc.pid
         try:
@@ -37,7 +52,7 @@ def quit_app():
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
     print(Fore.RED + '[-] Done cleaning ... ')
-    quit(1)
+    sys.exit(1)
 
 def unknown_cmd():
     print(Fore.RED + "[-] Unknown command" + Fore.RESET)
@@ -172,8 +187,8 @@ def execute_command(cmd, stdout, tool):
 def execute_frida_command(config_file, script_file, stdout, modify=False):
     cmd = f'frida {config_file["mode"]} {config_file["method"]} {config_file["app"]} -l {script_file} {config_file["pause"]}'
 
-    print(Fore.YELLOW + "Command used: " + cmd + Fore.RESET)
-    print(Fore.YELLOW + "Logging to: " + stdout + Fore.RESET)
+    print(Fore.YELLOW + "[*] Command used: " + cmd + Fore.RESET)
+    print(Fore.YELLOW + "[*] Logging to: " + stdout + Fore.RESET)
 
     # check mode
     if config_file["mode"] == "-U":
@@ -193,7 +208,6 @@ def execute_frida_command(config_file, script_file, stdout, modify=False):
 
     session = device.attach(pid)
     script = session.create_script(open(script_file).read())
-
     def on_message(msg, _data):
         with open(stdout, 'a') as f:
             f.writelines(msg['payload'])
@@ -201,6 +215,8 @@ def execute_frida_command(config_file, script_file, stdout, modify=False):
     
     script.on("message", on_message)
     script.load()
+    print(Fore.YELLOW + "[*] Executing command"  + Fore.RESET)
+    time.sleep(2)
 
     # for NSUserDefaults
     if modify:
@@ -217,7 +233,6 @@ def execute_frida_command(config_file, script_file, stdout, modify=False):
         print(Fore.RED + '[-] Some error occured! Try again!' + Fore.RESET)
         return False
 
-    
 def find_command(cmd, search_word):
     found = False
     for proc in psutil.process_iter():

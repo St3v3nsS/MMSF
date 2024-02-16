@@ -53,9 +53,8 @@ class RootDetection:
                     try:
                         status = mmsf.bypass_root_frida(cmd,data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -127,9 +126,8 @@ class RootDetection:
                     try:
                         status = mmsf.bypass_root_objection_android(cmd,data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 

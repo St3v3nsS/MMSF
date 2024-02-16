@@ -59,9 +59,8 @@ class DeepLink:
                     try:
                         status = mmsf.open_deeplink(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
 
@@ -124,9 +123,8 @@ class DeepLink:
                     try:
                         status = mmsf.generate_jsinterface(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
 
@@ -203,9 +201,8 @@ class DeepLink:
                     try:
                         status = mmsf.generate_deeplink(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
 

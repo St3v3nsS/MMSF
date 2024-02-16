@@ -52,9 +52,8 @@ class ContentProvider:
                     try:
                         status = mmsf.query_provider(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -117,9 +116,8 @@ class ContentProvider:
                     try:
                         status = mmsf.insert_provider(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -178,9 +176,8 @@ class ContentProvider:
                     try:
                         status = mmsf.read_provider(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -238,9 +235,8 @@ class ContentProvider:
                     try:
                         status = mmsf.update_provider(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 

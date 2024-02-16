@@ -54,9 +54,8 @@ class ExtractBackup:
                     try:
                         status = mmsf.extract_backup(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
                     
                 readline.set_completer(cmd_completer)
 
@@ -128,9 +127,8 @@ class ExtractBackup:
                     try:
                         status = mmsf.restore_backup(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
                     
                 readline.set_completer(cmd_completer)
 

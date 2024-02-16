@@ -4,6 +4,7 @@ import re
 from asyncio.subprocess import DEVNULL
 import subprocess
 from subprocess import PIPE
+import threading
 import warnings
 from colorama import Fore
 import readline
@@ -459,7 +460,7 @@ class MassiveMobileSecurityFramework:
                     print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                     return 0    
             if self._frida.config["app"]:
-                self._frida.bypass_root()
+                threading.Thread(target=self._frida.bypass_root, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -613,7 +614,7 @@ class MassiveMobileSecurityFramework:
         self._apktool.config = data
         if cmd == "run": 
             if self._apktool.config["app"]:
-                self.pull_apk()
+                threading.Thread(target=self.pull_apk, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -634,7 +635,7 @@ class MassiveMobileSecurityFramework:
         self._other_tools.config = data
         if cmd == "run": 
             if self._other_tools.config["app"]:
-                self._other_tools.extract_backup()
+                threading.Thread(target=self._other_tools.extract_backup, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -655,7 +656,7 @@ class MassiveMobileSecurityFramework:
         self._other_tools.config = data
         if cmd == "run": 
             if self._other_tools.config["app"]:
-                self._other_tools.restore_backup()
+                threading.Thread(target=self._other_tools.restore_backup, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -676,7 +677,7 @@ class MassiveMobileSecurityFramework:
         self._other_tools._generate_deeplink_data = data
         if cmd == "run": 
             if self._other_tools._generate_deeplink_data["server"] and self._other_tools._generate_deeplink_data["scheme"] and self._other_tools._generate_deeplink_data["package"] and self._other_tools._generate_deeplink_data["component"] and self._other_tools._generate_deeplink_data["deeplink_uri"] and self._other_tools._generate_deeplink_data["param"] and self._other_tools._generate_deeplink_data["js_interface"]:
-                self._other_tools.generate_jsinterface()
+                threading.Thread(target=self._other_tools.generate_jsinterface, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -704,7 +705,7 @@ class MassiveMobileSecurityFramework:
         self._other_tools._generate_deeplink_data_d = data
         if cmd == "run": 
             if self._other_tools._generate_deeplink_data_d["scheme"] and self._other_tools._generate_deeplink_data_d["package"] and self._other_tools._generate_deeplink_data_d["component"] and self._other_tools._generate_deeplink_data_d["deeplink_uri"]:
-                self._other_tools.generate_deeplink()
+                threading.Thread(target=self._other_tools.generate_deeplink, args=([])).sart()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -738,7 +739,7 @@ class MassiveMobileSecurityFramework:
                     print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                     return 0    
             if self._frida.config["app"]:
-                self._frida.bypass_android_biometrics()
+                threading.Thread(target=self._frida.bypass_android_biometrics, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -766,7 +767,7 @@ class MassiveMobileSecurityFramework:
                     print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                     return 0    
             if self._frida.config["app"]:
-                self._frida.bypass_ios_biometrics()
+                threading.Thread(target=self._frida.bypass_ios_biometrics, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -791,7 +792,7 @@ class MassiveMobileSecurityFramework:
         self._objection._config["app"] = data["app"]
         if cmd == "run": 
             if self._objection._config["app"]:
-                self._objection.bypass_ios_biometrics()
+                threading.Thread(target=self._objection.bypass_ios_biometrics, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -830,7 +831,7 @@ class MassiveMobileSecurityFramework:
         self._objection._config["app"] = data["app"]
         if cmd == "run": 
             if self._objection._config["app"]:
-                self._objection.bypass_ios_jailbreak()
+                threading.Thread(target=self._objection.bypass_ios_jailbreak, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -853,7 +854,7 @@ class MassiveMobileSecurityFramework:
                     print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                     return 0    
             if self._frida.config["app"]:
-                multiprocessing.Process(target=self._frida.bypass_ios_jailbreak, args=([])).start()
+                threading.Thread(target=self._frida.bypass_ios_jailbreak, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -880,7 +881,7 @@ class MassiveMobileSecurityFramework:
             if self._nuclei.config["dir_name"]:
                 for path in paths:
                     print(Fore.YELLOW + f"[*] Executing nuclei in background for {path} templates." + Fore.RESET)
-                    multiprocessing.Process(target=self._nuclei._start_scan, args=([path])).start()
+                    threading.Thread(target=self._nuclei._start_scan, args=([path])).start()
                 return 1
             elif self._nuclei.config["app_name"] and self._nuclei.config["app_name"] in self.all_apps:
                 def previous_decompilation():
@@ -905,7 +906,7 @@ class MassiveMobileSecurityFramework:
                         decompiled = True
                         previous_decom = True
                     print(Fore.YELLOW + f"[*] Executing nuclei in background for {path} templates." + Fore.RESET)
-                    multiprocessing.Process(target=self._nuclei._start_scan, args=([path])).start()
+                    threading.Thread(target=self._nuclei._start_scan, args=([path])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -931,7 +932,7 @@ class MassiveMobileSecurityFramework:
                     print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                     return 0    
             if self._frida.config["app"]:
-                self._frida.nsuserdefaults_modify()
+                threading.Thread(target=self._frida.nsuserdefaults_modify, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -960,7 +961,7 @@ class MassiveMobileSecurityFramework:
                     print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                     return 0    
             if self._frida.config["app"]:
-                self._frida.nsuserdefaults_retrieve()
+                threading.Thread(target=self._frida.nsuserdefaults_retrieve, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)

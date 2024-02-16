@@ -50,9 +50,8 @@ class SSLPinning:
                     try:
                         status = mmsf.bypass_ssl_frida(cmd,data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -126,9 +125,8 @@ class SSLPinning:
                             try:
                                 status = mmsf.bypass_ssl_objection()
                             except Exception as e:
-                                print(Fore.RED + '[-] '+ e + Fore.RESET)
-                            finally:
-                                return status
+                                print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                            return status
                         else:
                             print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                             return 0              
@@ -197,9 +195,8 @@ class SSLPinning:
                     try:
                         status = mmsf.bypass_network_config(cmd, data)
                     except Exception as e:
-                        print(Fore.RED + '[-] '+ e + Fore.RESET)
-                    finally:
-                        return status
+                        print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                    return status
 
                 readline.set_completer(cmd_completer)
                 
@@ -259,9 +256,8 @@ class SSLPinning:
                             try:
                                 status = mmsf.reflutter_sslpinning()
                             except Exception as e:
-                                print(Fore.RED + '[-] '+ e + Fore.RESET)
-                            finally:
-                                return status
+                                print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
+                            return status
                         else:
                             print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                             return 0              

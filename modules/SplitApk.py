@@ -5,7 +5,7 @@ from colorama import Fore
 from Classes.constants import Constants
 from Classes.utils import back, listmodules, print_help, unknown_cmd
 
-class HandleAPK:
+class SplitApk:
     _description: str
     _name: str
 
@@ -18,11 +18,11 @@ class HandleAPK:
         return self._description
 
     def __init__(self) -> None:
-        self._description = "Generate, sign, pull and install an APK"
-        self._name = "handleapk"
+        self._description = "Generate, sign, pull and install SplitApks"
+        self._name = "splitapk"
     
     def execute(self, mmsf):
-        def handle_pull_apk(mmsf):
+        def handle_pull_apks(mmsf):
             set_data = ["app", "path", "apk"]
             data_scan = {
                 "dir_name": "base",
@@ -55,7 +55,7 @@ class HandleAPK:
                 def execute(cmd, data):
                     status = 0
                     try:
-                        status = mmsf.getapk(cmd, data)
+                        status = mmsf.getapks(cmd, data)
                     except Exception as e:
                         print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
                     return status
@@ -63,7 +63,7 @@ class HandleAPK:
                 readline.set_completer(cmd_completer)
 
                 # get user input
-                input_val = shlex.split(input('mmsf (handleapk/pull)> '))
+                input_val = shlex.split(input('mmsf (splitapk/pull)> '))
                 if len(input_val) >= 1:
                     command = input_val[0].lower()
                 elif len(input_val) < 1:
@@ -77,7 +77,7 @@ class HandleAPK:
                     # wait for data to be set
                     while True:
                         readline.set_completer(data_completer)
-                        inpt = shlex.split(input('mmsf (handleapk/pull/set)> '))
+                        inpt = shlex.split(input('mmsf (splitapk/pull/set)> '))
                         if len(inpt) > 1:
                             cmd, *args = inpt
                         elif len(inpt) < 1:
@@ -99,7 +99,7 @@ class HandleAPK:
                     if execute(command, data_scan) == 2:
                         break 
 
-        def handle_generate_apk(mmsf):
+        def handle_generate_apks(mmsf):
             set_data = ["dir_name", "path", "apk"]
             data_scan = {
                 "dir_name": "base",
@@ -132,7 +132,7 @@ class HandleAPK:
                 def execute(cmd, data):
                     status = 0
                     try:
-                        status = mmsf.generate_apk(cmd, data)
+                        status = mmsf.generate_apks(cmd, data)
                     except Exception as e:
                         print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
                     return status
@@ -140,7 +140,7 @@ class HandleAPK:
                 readline.set_completer(cmd_completer)
 
                 # get user input
-                input_val = shlex.split(input('mmsf (handleapk/generate)> '))
+                input_val = shlex.split(input('mmsf (splitapk/generate)> '))
                 if len(input_val) >= 1:
                     command = input_val[0].lower()
                 elif len(input_val) < 1:
@@ -154,7 +154,7 @@ class HandleAPK:
                     # wait for data to be set
                     while True:
                         readline.set_completer(data_completer)
-                        inpt = shlex.split(input('mmsf (handleapk/generate/set)> '))
+                        inpt = shlex.split(input('mmsf (splitapk/generate/set)> '))
                         if len(inpt) > 1:
                             cmd, *args = inpt
                         elif len(inpt) < 1:
@@ -176,7 +176,7 @@ class HandleAPK:
                     if execute(command, data_scan) == 2:
                         break
 
-        def handle_sign_apk(mmsf):
+        def handle_sign_apks(mmsf):
             set_data = ["in_apk", "path", "out_apk"]
             data_scan = {
                 "dir_name": "base",
@@ -209,7 +209,7 @@ class HandleAPK:
                 def execute(cmd, data):
                     status = 0
                     try:
-                        status = mmsf.sign_apk(cmd, data)
+                        status = mmsf.sign_apks(cmd, data)
                     except Exception as e:
                         print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
                     return status
@@ -217,7 +217,7 @@ class HandleAPK:
                 readline.set_completer(cmd_completer)
 
                 # get user input
-                input_val = shlex.split(input('mmsf (handleapk/sign)> '))
+                input_val = shlex.split(input('mmsf (splitapk/sign)> '))
                 if len(input_val) >= 1:
                     command = input_val[0].lower()
                 elif len(input_val) < 1:
@@ -231,7 +231,7 @@ class HandleAPK:
                     # wait for data to be set
                     while True:
                         readline.set_completer(data_completer)
-                        inpt = shlex.split(input('mmsf (handleapk/sign/set)> '))
+                        inpt = shlex.split(input('mmsf (splitapk/sign/set)> '))
                         if len(inpt) > 1:
                             cmd, *args = inpt
                         elif len(inpt) < 1:
@@ -254,7 +254,7 @@ class HandleAPK:
                     if execute(command, data_scan) == 2:
                         break 
 
-        def handle_install_apk(mmsf):
+        def handle_install_apks(mmsf):
             set_data = ["dir_name", "path", "apk"]
             data_scan = {
                 "dir_name": "base",
@@ -287,7 +287,7 @@ class HandleAPK:
                 def execute(cmd, data):
                     status = 0
                     try:
-                        status = mmsf.install_apk(cmd, data)
+                        status = mmsf.handle_install_apks(cmd, data)
                     except Exception as e:
                         print(Fore.RED + '[-] '+ str(e) + Fore.RESET)
                     return status
@@ -295,7 +295,7 @@ class HandleAPK:
                 readline.set_completer(cmd_completer)
 
                 # get user input
-                input_val = shlex.split(input('mmsf (handleapk/install)> '))
+                input_val = shlex.split(input('mmsf (splitapk/install)> '))
                 if len(input_val) >= 1:
                     command = input_val[0].lower()
                 elif len(input_val) < 1:
@@ -309,7 +309,7 @@ class HandleAPK:
                     # wait for data to be set
                     while True:
                         readline.set_completer(data_completer)
-                        inpt = shlex.split(input('mmsf (handleapk/install/set)> '))
+                        inpt = shlex.split(input('mmsf (splitapk/install/set)> '))
                         if len(inpt) > 1:
                             cmd, *args = inpt
                         elif len(inpt) < 1:
@@ -331,10 +331,10 @@ class HandleAPK:
 
         modules = ["pull", "sign", "generate", "install"]
         descriptions = [
-            "Pull apk from device", 
-            "Sign custom apk",
-            "Generate custom apk",
-            "Install apk to device"]
+            "Pull SplitApks from device", 
+            "Sign custom SplitApks",
+            "Generate custom SplitApks",
+            "Install SplitApks to device"]
 
         while True:
             def init_completer(text, state):
@@ -346,7 +346,7 @@ class HandleAPK:
 
             readline.set_completer(init_completer)
 
-            input_val = shlex.split(input('mmsf (handleapk)> '))
+            input_val = shlex.split(input('mmsf (splitapk)> '))
             if len(input_val) < 1:
                 continue
             if len(input_val) > 2:
@@ -360,13 +360,13 @@ class HandleAPK:
                 if action not in modules:
                     unknown_cmd()
                 elif action == "pull":
-                    handle_pull_apk(mmsf)
+                    handle_pull_apks(mmsf)
                 elif action == "generate":
-                    handle_generate_apk(mmsf)
+                    handle_generate_apks(mmsf)
                 elif action == "sign":
-                    handle_sign_apk(mmsf)
+                    handle_sign_apks(mmsf)
                 else:
-                    handle_install_apk(mmsf)
+                    handle_install_apks(mmsf)
             elif input_val[0].lower() == "back":
                 back()
                 break
