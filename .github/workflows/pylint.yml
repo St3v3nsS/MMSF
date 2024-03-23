@@ -13,7 +13,8 @@ jobs:
         cache: 'pip'
     - name: Install dependencies
       run: |
+        pip install -r requirements.txt
         pip install pylint
-    - name: Analysing the code with pylint
+    - name: Run pylint
       run: |
         pylint --output-format=colorized --errors-only **/*.py
