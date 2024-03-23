@@ -16,4 +16,4 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint --errors-only **/*.py
+        pylint --output-format=colorized --errors-only **/*.py
