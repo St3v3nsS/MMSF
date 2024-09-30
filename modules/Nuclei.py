@@ -30,7 +30,7 @@ class Nuclei:
             "out_dir": ""
         }
         while True:
-            set_data = ["out_file", "dir_name", "app_name", "out_dir"] + mmsf.all_apps
+            set_data = ["out_file", "dir_name", "app_name", "out_dir"]
 
             def data_completer(text, state):
                 options = [i for i in set_data if i.startswith(text)]

@@ -6,9 +6,6 @@ from colorama import Fore
 from Classes.constants import Constants
 import xml.etree.ElementTree as ET
 
-from Classes.utils import zipalign
-
-
 class nuclei:
     
     id: str

@@ -269,3 +269,10 @@ def zipalign():
             return f'{zipalign} -p -f 4'
     elif (platform.system() == "Linux"):
         return Constants.ZIPALIGN.value
+    
+def mkdir(path):
+    if not os.path.isdir(path):
+        try:
+            os.mkdir(path)
+        except OSError as e:
+            print(Fore.LIGHTBLUE_EX + '[DEBUG] ' + e + Fore.RESET)

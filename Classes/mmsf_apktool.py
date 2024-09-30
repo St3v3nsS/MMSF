@@ -6,7 +6,7 @@ from colorama import Fore
 from Classes.constants import Constants
 import xml.etree.ElementTree as ET
 
-from Classes.utils import zipalign
+from Classes.utils import zipalign, mkdir
 
 
 class apktool:
@@ -36,6 +36,12 @@ class apktool:
         self.reconfigure()
         self.__init_java()
         self.__init_apktool()
+        self._config_split = {
+            "apks": [],
+            "path": Constants.DIR_PULLED_APKS.value,
+            "patched_apks": [],
+            "app": ""
+        }
 
     def __init_apktool(self):
         print(Fore.BLUE + "[*] apktool is running!" + Fore.RESET)
@@ -57,14 +63,16 @@ class apktool:
 
     def _decompile_apk(self, path_to_apk="default"):
         apk_path = self._get_default(path_to_apk)
-        print(apk_path)
-        cmd_to_run = ['apktool', 'd', apk_path, '-o', self._apk_dir,'-f']
+        cmd_to_run = ['apktool', 'd', apk_path, '-o', self._apk_dir,'-f', '--use-aapt2', '-r']
+        print(" ".join(cmd_to_run))
         p = subprocess.run(cmd_to_run, stderr=PIPE, stdout=DEVNULL)
         self._handle_errors(p)
 
-    def generate_apk(self):
-        self.reconfigure()
-        cmd_to_run = ['apktool', 'b', '-o', self._generated_apk, self._apk_dir]
+    def generate_apk(self, from_split_apk=False):
+        if not from_split_apk:
+            self.reconfigure()
+        cmd_to_run = ['apktool', 'b', self._apk_dir, '-o', self._generated_apk, '--use-aapt2',  '-f']
+        print(" ".join(cmd_to_run))
         p = subprocess.run(cmd_to_run, stderr=PIPE, stdout=DEVNULL)
         self._handle_errors(p)
         print(Fore.GREEN + '[+] APK generated to: ' + self._generated_apk + Fore.RESET)
@@ -101,8 +109,6 @@ class apktool:
             print(Fore.GREEN + "[+] Success" + Fore.RESET)
        
     def _get_default(self, path_to_apk="default"):
-        print(self._patched_apk)
-        print(path_to_apk)
         return self._patched_apk if path_to_apk == "default" else path_to_apk
 
     def _modify_network_config(self, path_to_apk="default"):
@@ -165,4 +171,68 @@ class apktool:
 
     def extract_strings(self, path_to_apk="default"):
         self._decompile_apk(path_to_apk)
-        
+
+    def install_apks(self):
+        apks = self._config_split["apks"]
+        if not apks:
+            apks = self._config_split["patched_apks"]
+            if not apks:
+                for file in os.listdir(self._config_split["path"]):
+                    if file.endswith(".apk"):
+                        apks.append(os.path.join(self._config_split["path"], file))
+        cmd_to_exec = [Constants.ADB.value, 'install-multiple', '-r'] + apks
+        p = subprocess.run(cmd_to_exec, stderr=PIPE, stdout=DEVNULL)
+        self._handle_errors(p)
+
+    def sign_apks(self):
+        to_sign = self._config_split["apks"]
+        if not to_sign:
+            to_sign = self._config_split["path"]
+        else:
+            to_sign = [x.strip() for x in self._config_split["apks"].split(',')]
+        cmd_to_run = f"{Constants.UBERSIGNER.value} -a {to_sign}"
+        p = subprocess.run(cmd_to_run.split(), stderr=PIPE, stdout=DEVNULL)
+        self._handle_errors(p)
+        signed_path = os.path.join(self._config_split["path"], "signed")
+        mkdir(signed_path)
+        for file in os.listdir(self._config_split["path"]):
+            if file.endswith("debugSigned.apk"):
+                fullpath = os.path.join(self._config_split["path"], file)
+                shutil.move(fullpath, signed_path)
+        self._config_split["patched_apks"] = os.listdir(signed_path)
+        print(Fore.GREEN + '[+] APKS Signed: ' + str(self._config_split["patched_apks"]) + Fore.RESET)
+        print(Fore.GREEN + '[+] APKS saved to: ' + str(signed_path) + Fore.RESET)
+
+    def decompile_apks(self):
+        to_decompile = self._config_split["apks"]
+        if not to_decompile:
+            to_decompile = self._config_split["path"]
+        else:
+            to_decompile = [x.strip() for x in self._config_split["apks"].split(',')]
+        decompiled_path = os.path.join(self._config_split["path"], "decompiled")
+        mkdir(decompiled_path)
+        for file in os.listdir(self._config_split["path"]):
+            if file.endswith(".apk"):
+                fullpath = os.path.join(self._config_split["path"], file)
+                self._apk_dir = os.path.join(decompiled_path, file.split(".apk")[0])
+                print(Fore.GREEN + f'[+] Decompiling {file.split(".apk")[0]} ... ' + Fore.RESET)
+                self._decompile_apk(fullpath)
+        print(Fore.GREEN + '[+] APKS decompiled to: ' + str(decompiled_path) + Fore.RESET)
+
+    def generate_apks(self):
+        to_generate = self._config_split["apks"]
+        if not to_generate:
+            to_generate = self._config_split["path"]
+        else:
+            to_generate = [x.strip() for x in self._config_split["apks"].split(',')]
+        generated_path = os.path.join(self._config_split["path"], "modified")
+        mkdir(generated_path)
+        for file in os.listdir(self._config_split["path"]):
+            if "modified" in file:
+                continue
+            fullpath = os.path.join(self._config_split["path"], file)
+            self._apk_dir = fullpath
+            self._generated_apk = os.path.join(generated_path, f'{file}.apk')
+            print(Fore.GREEN + f'[+] Generating {file}.apk ... ' + Fore.RESET)
+            self.generate_apk(True)
+        print(Fore.GREEN + '[+] APKS generated to: ' + str(generated_path) + Fore.RESET)    

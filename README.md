@@ -32,7 +32,7 @@ mmsf (rootdetection/frida/set)> run
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 MODULE                      |  DESCRIPTION
-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 biometrics                  |  Bypass Biometrics authentication on both iOS/Android
 broadcast                   |  Send a broadcast intent
 provider                    |  Exploit the exported content provider to extract data
@@ -49,6 +49,7 @@ rootdetection               |  Bypass the Android root detection mechanisms thro
 sslpinning                  |  Bypass the SSL Pinning mechanism through different methods
 scan                        |  Scan the application to retrieve crucial information such as exported activities, path traversal, SQL injections, attack vector and so on
 sniff                       |  Sniffing a broadcast intent
+splitapk                    |  Generate, sign, pull and install SplitApks
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Useful commands
@@ -78,10 +79,11 @@ Here is a list of commands that you can use
 - [ ] Add keystore checks
 - [x] Search command
 - [ ] Extract important strings from the app
-- [ ] Add Nuclei checks
+- [x] Add Nuclei checks
 - [ ] RMS Integration
 - [ ] Install Burp Certificate
 - [ ] Clipboard manager
 - [ ] Patch IPA 
 - [ ] Emulator Bypass
-- [ ] Split apk install
+- [x] Split apk install
+- [ ] Download ipa from AppStore

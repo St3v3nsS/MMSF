@@ -1,7 +1,9 @@
 import multiprocessing
 import os
+from pathlib import Path
 import re
 from asyncio.subprocess import DEVNULL
+import shutil
 import subprocess
 from subprocess import PIPE
 import threading
@@ -592,22 +594,23 @@ class MassiveMobileSecurityFramework:
 
     # Pull apk from device
     def pull_apk(self):
-        cmd_to_run = [Constants.ADB.value, 'shell', 'pm', 'list', 'packages', '-f']
+        cmd_to_run = [Constants.ADB.value, 'shell', 'pm', 'path', self._apktool.config["app"]]
         output = subprocess.run(cmd_to_run, stderr=DEVNULL, stdout=PIPE).stdout.decode().splitlines()
+        pattern = re.compile(r"package:(.*?\.apk)")
+        if len(output) > 1:
+            print(Fore.YELLOW + '[*] It seems like the app is a Split One. Continue downloading the base.apk. For complete APK use splitapk module'  + Fore.RESET)
         for line in output:
-            if self._apktool.config["app"] in line:
-                pattern = re.compile(r"package:(.*?\.apk)=")
-                file_path = pattern.findall(line)[0]
-                file_name = os.path.splitext(os.path.basename(file_path))
-                if self._apktool.config["apk"] == "base":
-                    self._apktool.config["apk"] = file_name[0]
-                self._apktool.reconfigure()
-                pull_cmd = [Constants.ADB.value, 'pull', file_path, os.path.join(self._apktool.config["path"], self._apktool.config["apk"])]
-                p = subprocess.run(pull_cmd, stdout=PIPE, stderr=PIPE)
-                print(Fore.GREEN + '[+] Pulling apk...' + Fore.RESET)
-                print(Fore.GREEN + '[+] ' +  p.stdout.decode().strip() + Fore.RESET)
-                print(Fore.GREEN + f'[+] Data pulled successfully to {self._apktool.config["path"]}' + Fore.RESET)
-                return
+            file_path = pattern.findall(line)[0]
+            file_name = os.path.splitext(os.path.basename(file_path))
+            if self._apktool.config["apk"] == "base":
+                self._apktool.config["apk"] = file_name[0]
+            self._apktool.reconfigure()
+            pull_cmd = [Constants.ADB.value, 'pull', file_path, os.path.join(self._apktool.config["path"], self._apktool.config["apk"])]
+            p = subprocess.run(pull_cmd, stdout=PIPE, stderr=PIPE)
+            print(Fore.GREEN + '[+] Pulling apk...' + Fore.RESET)
+            print(Fore.GREEN + '[+] ' +  p.stdout.decode().strip() + Fore.RESET)
+            print(Fore.GREEN + f'[+] Data pulled successfully to {self._apktool.config["path"]}' + Fore.RESET)
+            return
         print(Fore.RED + '[-] The application does not exist. Try again' + Fore.RESET)
                 
     def getapk(self, cmd, data):
@@ -705,7 +708,7 @@ class MassiveMobileSecurityFramework:
         self._other_tools._generate_deeplink_data_d = data
         if cmd == "run": 
             if self._other_tools._generate_deeplink_data_d["scheme"] and self._other_tools._generate_deeplink_data_d["package"] and self._other_tools._generate_deeplink_data_d["component"] and self._other_tools._generate_deeplink_data_d["deeplink_uri"]:
-                threading.Thread(target=self._other_tools.generate_deeplink, args=([])).sart()
+                threading.Thread(target=self._other_tools.generate_deeplink, args=([])).start()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -973,6 +976,156 @@ class MassiveMobileSecurityFramework:
                 {"name": "HOST", "value": self._frida.config["host"], "description": "If MODE set to Remote, specify HOST. Default set to 127.0.0.1", "required": False},
                 {"name": "PAUSE", "value": "TRUE" if self._frida.config["pause"] == "--pause" else "FALSE" , "description": "The application should be paused on start? Default set to FALSE", "required": False},
                 {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST", "description": "The method of attaching to the application: frontmost or spawn. Default SPAWN"}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def list_readable_files(self, directory_path):
+        """Lists readable files within a specified directory.
+
+        Args:
+            directory_path (str): The path to the directory.
+
+        Returns:
+            list: A list of absolute paths of readable files.
+        """
+
+        command = f"adb shell ls -la {directory_path}"
+        output = subprocess.check_output(command.split()).decode("utf-8").splitlines()
+
+        readable_files = []
+        for line in output:
+            if line.strip():
+                file_info = line.split()
+                permissions = file_info[0]
+                file_name = file_info[-1]
+                if len(permissions) != 10:
+                    continue
+                if permissions[7] == 'r' and (file_name != '.' and file_name != '..'):  # Check if the file is readable
+                    full_path = f"{directory_path}/{file_name}"
+                    readable_files.append(full_path)
+
+        return readable_files
+
+    def pull_apks(self):
+        cmd_to_run = [Constants.ADB.value, 'shell', 'pm', 'path', self._apktool._config_split["app"]]
+        output = subprocess.run(cmd_to_run, stderr=DEVNULL, stdout=PIPE).stdout.decode().splitlines()
+        pattern = re.compile(r"package:(.*?\.apk)")
+        print(Fore.GREEN + '[+] Pulling apks...' + Fore.RESET)
+
+        for line in output:
+            file_path = Path(pattern.findall(line)[0]).parent
+            pull_files = self.list_readable_files(file_path)
+            dst = os.path.join(self._apktool._config_split["path"],self._apktool._config_split["app"])
+            os.mkdir(dst)
+            for file in pull_files:
+                pull_cmd = [Constants.ADB.value, 'pull', file, dst]
+                p = subprocess.run(pull_cmd, stdout=PIPE, stderr=PIPE)
+                print(Fore.GREEN + '[+] ' +  p.stdout.decode().strip() + Fore.RESET)
+            print(Fore.GREEN + f'[+] Data pulled successfully to {dst}' + Fore.RESET)
+            return
+        print(Fore.RED + '[-] The application does not exist. Try again' + Fore.RESET)
+
+    def getapks(self, cmd, data):
+        self._apktool._config_split = data
+        if cmd == "run": 
+            if self._apktool._config_split["app"]:
+                threading.Thread(target=self.pull_apks, args=([])).start()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APP", "value": self._apktool._config_split["app"], "description": "The application name: MyApplication"},
+                {"name": "PATH", "value": self._apktool._config_split["path"], "description": "The path where to save the apks. Default to: ~/.mmsf/loot/apks", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def install_apks(self, cmd, data):
+        self._apktool._config_split = data
+        if cmd == "run": 
+            if self._apktool._config_split["path"] or self._apktool._config_split["apks"]:
+                print(Fore.GREEN + "[+] Installing apks.." + Fore.RESET)
+                self._apktool.install_apks()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APKS", "value": self._apktool._config_split["apks"], "description": "The APKs that are going to be installed. Example: base.apk, split_config.en.apk", 'required': False},
+                {"name": "PATH", "value": self._apktool._config_split["path"], "description": "The path where the APKs are located. Default to: ~/.mmsf/loot/apks", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+        
+    def generate_apks(self, cmd, data):
+        self._apktool._config_split = data
+        if cmd == "run": 
+            if self._apktool._config_split["path"]:
+                print(Fore.GREEN + "[+] Generating apks.." + Fore.RESET)
+                self._apktool.generate_apks()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APKS", "value": self._apktool._config_split["apks"], "description": "The APKs that are going to be installed. Default: base_patched.apk", 'required': True},
+                {"name": "PATH", "value": self._apktool._config_split["path"], "description": "The path where the apk is located. Default to: ~/.mmsf/loot/apks", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def sign_apks(self, cmd, data):
+        self._apktool._config_split = data
+        if cmd == "run": 
+            if self._apktool._config_split["path"] or self._apktool._config_split["apks"]:
+                print(Fore.GREEN + "[+] Signing apks.." + Fore.RESET)
+                self._apktool.sign_apks()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APKS", "value": self._apktool._config_split["apks"], "description": "The APKs that are going to be signed. Example: base.apk, split_config.en.apk", 'required': False},
+                {"name": "PATH", "value": self._apktool._config_split["path"], "description": "The path where the APKs are located. Default to: ~/.mmsf/loot/apks", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+    
+    def decompile_apks(self, cmd, data):
+        self._apktool._config_split = data
+        if cmd == "run": 
+            if self._apktool._config_split["path"] or self._apktool._config_split["apks"]:
+                print(Fore.GREEN + "[+] Decompiling apks.." + Fore.RESET)
+                self._apktool.decompile_apks()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APKS", "value": self._apktool._config_split["apks"], "description": "The APKs that are going to be decompiled. Example: base.apk, split_config.en.apk", 'required': False},
+                {"name": "PATH", "value": self._apktool._config_split["path"], "description": "The path where the APKs are located. Default to: ~/.mmsf/loot/apks", "required": False}])
             return 0
         elif cmd == "exit":
             quit_app()
