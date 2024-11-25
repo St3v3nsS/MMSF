@@ -134,7 +134,9 @@ def print_show_table(params):
     print(dash * total_len)
 
 def check_alive_devices():
-    return alive_android_devices() or alive_ios_devices()
+    if alive_android_devices():
+        return True
+    return alive_ios_devices()
 
 def alive_android_devices():
     cmd = f'{Constants.ADB.value} devices -l'
@@ -185,53 +187,101 @@ def execute_command(cmd, stdout, tool):
         return False
 
 def execute_frida_command(config_file, script_file, stdout, modify=False):
-    cmd = f'frida {config_file["mode"]} {config_file["method"]} {config_file["app"]} -l {script_file} {config_file["pause"]}'
-
-    print(Fore.YELLOW + "[*] Command used: " + cmd + Fore.RESET)
+    print(Fore.YELLOW + "[*] Command used: frida {} {} {} -l {}".format(
+        config_file["mode"], config_file["method"], config_file["app"], script_file) + Fore.RESET)
     print(Fore.YELLOW + "[*] Logging to: " + stdout + Fore.RESET)
 
-    # check mode
-    if config_file["mode"] == "-U":
-        device = frida.get_usb_device()
-    else:
-        subprocess.call(f'{Constants.ADB.value} connect {config_file["host"]}')
-        device = frida.get_remote_device()
-    
-    # check method
-    if config_file["method"] == "-f":
-        pid = device.spawn([config_file["app"]])
-    else:
-        pid = device.get_frontmost_application().pid
+    try:
+        # Get device
+        if config_file["mode"] == "-U":
+            device = frida.get_usb_device()
+        else:
+            subprocess.call(f'{Constants.ADB.value} connect {config_file["host"]}')
+            device = frida.get_remote_device()
 
-    device.resume(pid)
-    time.sleep(1) #Without it Java.perform silently fails
+        # Clear previous log file
+        open(stdout, 'w').close()
 
-    session = device.attach(pid)
-    script = session.create_script(open(script_file).read())
-    def on_message(msg, _data):
-        with open(stdout, 'a') as f:
-            f.writelines(msg['payload'])
-            f.write('\n')
-    
-    script.on("message", on_message)
-    script.load()
-    print(Fore.YELLOW + "[*] Executing command"  + Fore.RESET)
-    time.sleep(2)
+        # Handle process spawning/attachment
+        if config_file["method"] == "-f":
+            print(Fore.YELLOW + "[*] Spawning application..." + Fore.RESET)
+            pid = device.spawn([config_file["app"]])
+            session = device.attach(pid)
+            
+            # Set up script before resuming
+            script = session.create_script(open(script_file).read())
+            
+            def on_message(msg, _data):
+                if msg.get('type') == 'error':
+                    print(Fore.RED + f"[-] Script Error: {msg['description']}" + Fore.RESET)
+                    return
+                with open(stdout, 'a') as f:
+                    f.writelines(str(msg.get('payload', '')))
+                    f.write('\n')
 
-    # for NSUserDefaults
-    if modify:
-        script.post({'type': 'start', 'key': config_file["key"], 'value': config_file["value"]})
+            script.on("message", on_message)
+            print(Fore.YELLOW + "[*] Loading script..." + Fore.RESET)
+            script.load()
+            
+            print(Fore.YELLOW + "[*] Resuming application..." + Fore.RESET)
+            device.resume(pid)
+        else:
+            print(Fore.YELLOW + "[*] Attaching to existing process..." + Fore.RESET)
+            target_app = device.get_frontmost_application()
+            if not target_app:
+                print(Fore.RED + "[-] Target application not found!" + Fore.RESET)
+                return False
+            
+            session = device.attach(target_app.pid)
+            script = session.create_script(open(script_file).read())
+            
+            def on_message(msg, _data):
+                if msg.get('type') == 'error':
+                    print(Fore.RED + f"[-] Script Error: {msg['description']}" + Fore.RESET)
+                    return
+                with open(stdout, 'a') as f:
+                    f.writelines(str(msg.get('payload', '')))
+                    f.write('\n')
 
-    found = False
-    with open(stdout, 'r') as f:
-        if any("Attached" in x for x in f.readlines()):
-            print(Fore.GREEN + '[+] Command executed successfully' + Fore.RESET)
-            found = True
-            return True
-        
-    if not found:
-        print(Fore.RED + '[-] Some error occured! Try again!' + Fore.RESET)
+            script.on("message", on_message)
+            script.load()
+
+        print(Fore.YELLOW + "[*] Waiting for script initialization..." + Fore.RESET)
+        time.sleep(2)  # Give the script time to initialize
+
+        # Handle NSUserDefaults modification if needed
+        if modify:
+            print(Fore.YELLOW + "[*] Sending modification message..." + Fore.RESET)
+            script.post({
+                'type': 'start', 
+                'key': config_file["key"], 
+                'value': config_file["value"]
+            })
+
+        # Wait for confirmation
+        max_retries = 10
+        retry_count = 0
+        while retry_count < max_retries:
+            with open(stdout, 'r') as f:
+                if any("Attached" in x for x in f.readlines()):
+                    print(Fore.GREEN + '[+] Command executed successfully' + Fore.RESET)
+                    return True
+            time.sleep(1)
+            retry_count += 1
+
+        print(Fore.RED + '[-] Timeout waiting for script attachment confirmation' + Fore.RESET)
         return False
+
+    except frida.ServerNotRunningError:
+        print(Fore.RED + "[-] Frida server is not running on the target device" + Fore.RESET)
+        return False
+    except frida.ProcessNotFoundError:
+        print(Fore.RED + "[-] Target process not found" + Fore.RESET)
+        return False
+    except Exception as e:
+        print(Fore.RED + f"[-] Error: {str(e)}" + Fore.RESET)
+        return False
+    
 
 def find_command(cmd, search_word):
     found = False

@@ -71,7 +71,7 @@ class drozer:
     def __init__(self, low_power_mode=False) -> None:
         self.low_power_mode = low_power_mode
         self._drozer_cmd = [Constants.DROZER.value, 'console', 'connect']
-        self._drozer_devices = [Constants.DROZER.value, 'console', 'devices']
+        self._drozer_devices = [Constants.DROZER.value, 'console', 'devices', '--server', 'host.docker.internal']
         self._agent_apk_path = os.path.join(Constants.DIR_UTILS_PATH.value, 'drozer-agent.apk')
         self.__init_drozer()
         self._config = {
@@ -120,7 +120,7 @@ class drozer:
     def __check_is_running(self):
         try:
             p = subprocess.run(" ".join(self._drozer_devices).split(), stderr=PIPE, stdout=PIPE)
-            if 'There was a problem connecting to the drozer Server.' in p.stderr.decode().splitlines() or 'There was a problem connecting to the drozer Server.' in p.stdout.decode().splitlines():
+            if 'There was a problem connecting to the drozer Server.' in p.stderr.decode().splitlines() or 'There was a problem connecting to the drozer Server.' in p.stdout.decode().splitlines() or "yayerroryay you probably didn't specify a valid drozer server and that's why you're seeing this error message" in p.stdout.decode().splitlines():
                 return False
             return True
         except Exception as e:
@@ -128,10 +128,13 @@ class drozer:
 
     def __start_agent(self):
         try:
-            p = subprocess.run([Constants.ADB.value] + 'shell su -c "am start -n com.mwr.dz/.activities.MainActivity"'.split(), stderr=PIPE, stdout=PIPE)
-            time.sleep(2)
-            p = subprocess.run([Constants.ADB.value, 'shell', 'su', '-c "am startservice -n com.mwr.dz/.services.ServerService -c com.mwr.dz.START_EMBEDDED"'], stderr=PIPE, stdout=PIPE)
-            time.sleep(2)
+            p = subprocess.run('docker run -it --add-host host.docker.internal:host-gateway withsecurelabs/drozer'.split(), stderr=PIPE, stdout=PIPE)
+            time.sleep(1)
+            p = subprocess.run(f'{Constants.ADB.value} shell am start -n com.withsecure.dz/com.WithSecure.dz.activities.MainActivity'.split(), stderr=PIPE, stdout=PIPE)
+            time.sleep(1)
+            p = subprocess.run(f'{Constants.ADB.value} shell am broadcast -a com.mwr.dz.PWN -n com.withsecure.dz/com.WithSecure.dz.receivers.StartServiceReceiver -c com.WithSecure.dz.START_EMBEDDED'.split(), stderr=PIPE, stdout=PIPE)
+            time.sleep(1)
+            p = subprocess.run(f'{Constants.ADB.value} shell am start -n com.withsecure.dz/com.WithSecure.dz.activities.MainActivity'.split(), stderr=PIPE, stdout=PIPE)
             return p.stderr.decode().splitlines()
         except Exception as e:
             print(e)
@@ -142,23 +145,23 @@ class drozer:
 
     def __init_drozer(self):
         while not self.__check_is_running():
+
             print(Fore.RED + "[-] Drozer is not running... Trying to wake the Agent... " + Fore.RESET)
             stderr = self.__start_agent()
-
-            if stderr:
+            if not stderr or len(stderr) == 0:
+                self.__adb_forward_tcp()
+            else:
                 print(Fore.RED + "[-] Drozer Agent is not installed on the phone. Installing ..." + Fore.RESET)
                 self.__download_agent()
                 self.__install_agent()
                 self.__start_agent()
                 self.__adb_forward_tcp()
-            else:
-                self.__adb_forward_tcp()
                 
         print(Fore.BLUE + "[*] Drozer Agent is running!" + Fore.RESET)
-        subprocess.run(f'{Constants.ADB.value} shell input keyevent 3'.split())
+        # subprocess.run(f'{Constants.ADB.value} shell input keyevent 3'.split())
 
     def __download_agent(self): 
-        url = "https://github.com/WithSecureLabs/drozer-agent/releases/download/2.5.2/agent-debug.apk"
+        url = "https://github.com/WithSecureLabs/drozer-agent/releases/download/3.1.0/drozer-agent.apk"
         drozer_agent = requests.get(url)
         open(self._agent_apk_path, 'wb').write(drozer_agent.content)
 
@@ -178,7 +181,7 @@ class drozer:
         fname = cmd.value["fname"]
         msg = cmd.value["display"]
 
-        final_command = " ".join(self._drozer_cmd).split() + ['-c', command, '--debug']
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', command, '--debug', '--server', 'host.docker.internal']
         print(msg)
         print(Fore.YELLOW + '[*] Command used ' + " ".join(final_command))
         with open(os.path.join(self._config["full_path"],fname), "w") as outfile:
@@ -200,8 +203,8 @@ class drozer:
 
     # Find specific app using drozer
     def find_app(self) -> list:
-        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}', '--debug']
-        print(Commands.FIND_APP.value["display"] + " Command used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}" --debug')
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}', '--debug', '--server', 'host.docker.internal']
+        print(Commands.FIND_APP.value["display"] + " Command used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.FIND_APP.value["cmd"]} -f {self._config["find_app_query"]}" --debug --server host.docker.internal')
         output = subprocess.run(final_command, stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()
         apps = []
 
@@ -226,16 +229,17 @@ class drozer:
             fcmd += f" --mimetype {self._activity['mimetype']}"
 
         # launch the drozer command
-        code = f'{Commands.START_ACTIVITY.value["cmd"]}{self._activity["app_name"]} {self._activity["component"]}{fcmd}\nexit'
-
+        drozer_cmd = " ".join(self._drozer_cmd).split()
+        # code = f'{Commands.START_ACTIVITY.value["cmd"]} {self._activity["app_name"]} {self._activity["component"]}{fcmd}\nexit'
+        cmd = drozer_cmd + ["-c", f'{Commands.START_ACTIVITY.value["cmd"]} {self._activity["app_name"]} {self._activity["component"]}{fcmd}', "--debug", "--server", "host.docker.internal"]
         # print the command for PoCs
-        print(Fore.YELLOW + Commands.START_ACTIVITY.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c \"{Commands.START_ACTIVITY.value["cmd"]}{self._activity["app_name"]} {self._activity["component"]}{fcmd}\" --debug' + Fore.RESET)
-        output = subprocess.run(self._drozer_cmd, input=code, stdout=DEVNULL, stderr=PIPE, encoding='UTF-8')
-        
+        print(Fore.YELLOW + Commands.START_ACTIVITY.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c \"{Commands.START_ACTIVITY.value["cmd"]} {self._activity["app_name"]} {self._activity["component"]}{fcmd}\" --debug --server host.docker.internal' + Fore.RESET)
+        output = subprocess.run(cmd, stdout=DEVNULL, stderr=PIPE)
         # check for any errors and print to the console
-        stderr = output.stderr.splitlines()
-        if "warning" in output.stderr.lower():
+        stderr = output.stderr.decode().splitlines()
+        if "warning" in output.stderr.decode().lower():
             print(Fore.RED + f"[-] {stderr[2]}" + Fore.RESET)
+
 
     # start activity using intent
     def send_broadcast(self):
@@ -257,7 +261,7 @@ class drozer:
         code = f'{Commands.SEND_BROADCAST.value["cmd"]}{fcmd}\nexit'
 
         # print the command for PoCs
-        print(Fore.YELLOW + Commands.SEND_BROADCAST.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c \"{Commands.SEND_BROADCAST.value["cmd"]}{fcmd}\" --debug' + Fore.RESET)
+        print(Fore.YELLOW + Commands.SEND_BROADCAST.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c \"{Commands.SEND_BROADCAST.value["cmd"]}{fcmd}\" --debug --server host.docker.internal' + Fore.RESET)
         output = subprocess.run(self._drozer_cmd, input=code, stdout=DEVNULL, stderr=PIPE, encoding='UTF-8')
         
         # check for any errors and print to the console
@@ -279,16 +283,16 @@ class drozer:
                 fcmd += f' --selection-args {" ".join(self.content_provider["selection_args"])}'
             if self.content_provider["uri"]:
                 fcmd += f"{self.content_provider['uri']}"
-        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}', '--debug']
-        print(Commands.QUERY_CONTENT.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}" --debug' + Fore.RESET)
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}', '--debug --server host.docker.internal']
+        print(Commands.QUERY_CONTENT.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}" --debug --server host.docker.internal' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
             print(Fore.RED + f"[-] Could not get a ContentProviderClient for {self.content_provider['uri']}" + Fore.RESET)
 
     # Open DeepLinks
     def open_deeplink(self):
-        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.LAUNCH_DEEPLINK.value["cmd"]} {self.activity["deeplink"]}', '--debug']
-        print(Commands.LAUNCH_DEEPLINK.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.LAUNCH_DEEPLINK.value["cmd"]}{self.activity["deeplink"]}" --debug' + Fore.RESET)
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.LAUNCH_DEEPLINK.value["cmd"]} {self.activity["deeplink"]}', '--debug --server host.docker.internal']
+        print(Commands.LAUNCH_DEEPLINK.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.LAUNCH_DEEPLINK.value["cmd"]}{self.activity["deeplink"]}" --debug --server host.docker.internal' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
             print(Fore.RED + "[-] No Activity found to handle Intent { act=android.intent.action.VIEW dat="+ self.activity["deeplink"] + " flg=0x10000000 (has extras) }" + Fore.RESET)
@@ -309,8 +313,8 @@ class drozer:
                 fcmd += f' --data-type {self.sniff_data["type"]}'
         if self.sniff_data['category']:
             fcmd += f" --category {self.sniff_data['category']}"
-        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.SNIFF_DATA.value["cmd"]}{fcmd}', '--debug']
-        print(Commands.SNIFF_DATA.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.SNIFF_DATA.value["cmd"]}{fcmd}" --debug' + Fore.RESET)
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.SNIFF_DATA.value["cmd"]}{fcmd}', '--debug', '--server', 'host.docker.internal']
+        print(Commands.SNIFF_DATA.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.SNIFF_DATA.value["cmd"]}{fcmd}" --debug --server host.docker.internal' + Fore.RESET)
         p = subprocess.Popen(final_command, stdout=subprocess.PIPE, stderr=DEVNULL, bufsize=1, universal_newlines=True)
         while p.poll() is None:
             #line = p.stdout.read(2)
@@ -334,8 +338,8 @@ class drozer:
                 fcmd += f'{" ".join(self.content_provider["projection"])}'
             if self.content_provider["uri"]:
                 fcmd += f" {self.content_provider['uri']}"
-        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.INSERT_PROVIDER.value["cmd"]} {fcmd.strip()}', '--debug']
-        print(Commands.INSERT_PROVIDER.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.INSERT_PROVIDER.value["cmd"]} {fcmd.strip()}" --debug' + Fore.RESET)
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.INSERT_PROVIDER.value["cmd"]} {fcmd.strip()}', '--debug', '--server', 'host.docker.internal']
+        print(Commands.INSERT_PROVIDER.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.INSERT_PROVIDER.value["cmd"]} {fcmd.strip()}" --debug --server host.docker.internal' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
             print(Fore.RED + f"[-] Could not get a ContentProviderClient for {self.content_provider['uri']}" + Fore.RESET)
@@ -352,8 +356,8 @@ class drozer:
                 fcmd += f' --selection-args {" ".join(self.content_provider["selection_args"])}'
             if self.content_provider["uri"]:
                 fcmd += f"{self.content_provider['uri']}"
-        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.UPDATE_PROVIDER.value["cmd"]} {fcmd.strip()}', '--debug']
-        print(Commands.UPDATE_PROVIDER.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.UPDATE_PROVIDER.value["cmd"]} {fcmd.strip()}" --debug' + Fore.RESET)
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.UPDATE_PROVIDER.value["cmd"]} {fcmd.strip()}', '--debug', '--server',  'host.docker.internal']
+        print(Commands.UPDATE_PROVIDER.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.UPDATE_PROVIDER.value["cmd"]} {fcmd.strip()}" --debug --server host.docker.internal' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
             print(Fore.RED + f"[-] Could not get a ContentProviderClient for {self.content_provider['uri']}" + Fore.RESET)
@@ -370,8 +374,8 @@ class drozer:
                 fcmd += f' --data-path {" ".join(self.content_provider["selection_args"])}'
             if self.content_provider["uri"]:
                 fcmd += f"{self.content_provider['uri']}"
-        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}', '--debug']
-        print(Commands.QUERY_CONTENT.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}" --debug' + Fore.RESET)
+        final_command = " ".join(self._drozer_cmd).split() + ['-c', f'{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}', '--debug', '--server', 'host.docker.internal']
+        print(Commands.QUERY_CONTENT.value["display"] + "\nCommand used: " + " ".join(self._drozer_cmd) + f' -c "{Commands.QUERY_CONTENT.value["cmd"]} {fcmd.strip()}" --debug --server host.docker.internal' + Fore.RESET)
         output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
         if "exception in module" in output:
             print(Fore.RED + f"[-] Could not get a ContentProviderClient for {self.content_provider['uri']}" + Fore.RESET)

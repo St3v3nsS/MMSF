@@ -32,8 +32,6 @@ class nuclei:
         app_name = self.config.get('app_name') if self.config.get('app_name') else os.path.basename(os.path.normpath(self.config.get('dir_name')))
         filename = f"{app_name}_nuclei_scan_{path}.txt" if not self.config.get("out_file") else self.config.get("out_file")
         outdir = Constants.DIR_NUCLEI_SCANS.value if not self.config.get("out_dir") else os.path.join(self.config.get("out_dir"), 'nuclei_scans')
-        if not os.path.isdir(outdir):
-            os.mkdir(outdir)
 
         if not self.config.get("dir_name"):
             self.config["dir_name"] = os.path.join(Constants.DIR_PULLED_APKS.value, self.config["dir_name"])
@@ -48,14 +46,13 @@ class nuclei:
             # If the echo command was successful, run the nuclei command with its output as input
             if echo_result.returncode == 0:
                 nuclei_result = subprocess.run(command_nuclei, input=echo_result.stdout, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
                 # Print the nuclei command output or error
                 if nuclei_result.returncode == 0:
                     print(Fore.GREEN + f"\n[+] Results written at {os.path.join(outdir,filename)}" + Fore.RESET)
                 else:
-                    print(Fore.RED + '\n[-] Error' + Fore.RESET)
+                    print(Fore.RED + '\n[-] Error nuclei command' + Fore.RESET)
             else:
-                print(Fore.RED + '\n[-] Error' + Fore.RESET)
+                print(Fore.RED + '\n[-] Error echo command' + Fore.RESET)
 
         except Exception as e:
             print(Fore.RED + f"\n[-] An error occurred: {str(e)}" + Fore.RESET)

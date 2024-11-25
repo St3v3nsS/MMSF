@@ -67,7 +67,7 @@ class MassiveMobileSecurityFramework:
     def is_ios(self):
         cmd = "frida-ps -U"
         p = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.decode()
-        if "springboard" in p:
+        if "springboard" in p.lower():
             print(Fore.BLUE + '[*] Detected iOS device' + Fore.RESET)
             self._device_type = 'iOS'
             return True
@@ -251,23 +251,23 @@ class MassiveMobileSecurityFramework:
        
     # Open DeepLinks
     def open_deeplink(self, cmd, data):
-        self._drozer.activity["deeplink"] = data
+        self._other_tools._deeplink = data
         if cmd == "run":
-            if self._drozer.activity["deeplink"]:
-                self._drozer.open_deeplink()
+            if self._other_tools._deeplink:
+                self._other_tools.open_deeplink()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                 return 0                 
         elif cmd == "show":
-            print_show_table([{"name": "DATA_URI", "value": self._drozer.activity["deeplink"], "description": "The URI used to open the application as deeplink"}])
+            print_show_table([{"name": "DATA_URI", "value": self._other_tools._deeplink, "description": "The URI used to open the application as deeplink"}])
             return 0
         elif cmd == "exit":
             quit_app()
         elif cmd == "back":
             back()
             return 2
-        self._drozer.open_deeplink()
+        self._other_tools.open_deeplink()
 
     # Sniff broadcast data
     def sniff_broadcast_data(self, cmd, data):
@@ -392,7 +392,10 @@ class MassiveMobileSecurityFramework:
                     print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
                     return 0    
             if self._frida.config["app"]:
-                self._frida.bypass_ssl()
+                if self._device_type == 'iOS':
+                    self._frida.bypass_ssl_ios()
+                else:
+                    self._frida.bypass_ssl()
                 return 1
             else:
                 print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
@@ -694,7 +697,7 @@ class MassiveMobileSecurityFramework:
                 {"name": "COMPONENT", "value": self._other_tools._generate_deeplink_data["component"], "description": "The vulnerable activity. e.g. com.example.android/.WebViewActivity"},
                 {"name": "DEEPLINK_URI", "value": self._other_tools._generate_deeplink_data["deeplink_uri"], "description": "The deeplink URI."},
                 {"name": "PARAM", "value": self._other_tools._generate_deeplink_data["param"], "description": "The deeplink's vulnerable parameter."},
-                {"name": "JS_INTERFACE", "value": self._other_tools._generate_deeplink_data["js_interface"], "description": "The vulnerable JavaScript Interface"},
+                {"name": "JS_INTERFACE", "value": self._other_tools._generate_deeplink_data["js_interface"], "description": "The vulnerable JavaScript Interface in form of AndroidInterfaceName.getUserSession()"},
                 {"name": "PATH", "value": self._other_tools._generate_deeplink_data["path"], "description": "The path where to store the files. Default to: ~/.mmsf/loot/", "required": False},
                 {"name": "POC_FILENAME", "value": self._other_tools._generate_deeplink_data["poc_filename"], "description": "The POC filename. Default to: launch.html", "required": False}])
             return 0
@@ -882,6 +885,10 @@ class MassiveMobileSecurityFramework:
         decompiled = False
         if cmd == "run":   
             if self._nuclei.config["dir_name"]:
+                outdir = Constants.DIR_NUCLEI_SCANS.value if not self._nuclei.config.get("out_dir") else os.path.join(self._nuclei.config.get("out_dir"), 'nuclei_scans')
+
+                if not os.path.isdir(outdir):
+                    os.mkdir(outdir)
                 for path in paths:
                     print(Fore.YELLOW + f"[*] Executing nuclei in background for {path} templates." + Fore.RESET)
                     threading.Thread(target=self._nuclei._start_scan, args=([path])).start()

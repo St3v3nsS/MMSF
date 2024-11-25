@@ -43,7 +43,8 @@ class Frida:
         }
         self.temp_dir = tempfile.mkdtemp()
         self.temp_file = tempfile.mkstemp(dir=self.temp_dir, suffix=".js")[1]
-        self.files = {'ssl-android': os.path.join(self.temp_dir,'frida-ssl-android.log'), 
+        self.files = {'ssl-android': os.path.join(self.temp_dir,'frida-ssl-android.log'),
+                      'ssl-ios': os.path.join(self.temp_dir,'frida-ssl-ios.log'), 
                       'root-android': os.path.join(self.temp_dir,'frida-root-android.log'), 
                       'biometrics-ios': os.path.join(self.temp_dir,'frida-biometrics-ios.log'),
                       'biometrics-android': os.path.join(self.temp_dir,'frida-biometrics-android.log'),
@@ -64,7 +65,13 @@ class Frida:
             p = subprocess.run(f'{Constants.ADB.value} shell ls {fpath}'.split(), stderr=PIPE, stdout=PIPE)
             if any("No such file or directory" in s for s in [p.stderr.decode(), p.stdout.decode()]):
                 continue
-            cmd = f'{Constants.ADB.value} shell su -c "{fpath} &"'
+
+            subprocess.run(f'{Constants.ADB.value} shell su -c "setprop persist.device_config.runtime_native.usap_pool_enabled false"'.split(), 
+               stderr=subprocess.DEVNULL, 
+               stdout=subprocess.DEVNULL, 
+               timeout=5)
+            subprocess.run(f'{Constants.ADB.value} shell su -c "setenforce 0"'.split(), stderr=DEVNULL, stdout=DEVNULL)
+            cmd = f'{Constants.ADB.value} shell su -c "{fpath} -P &"'
             p = subprocess.Popen(cmd.split(), stdin=PIPE, stderr=PIPE, stdout=PIPE)
 
         subprocess.run([Constants.ADB.value, 'forward', 'tcp:27042', 'tcp:27042'], stderr=DEVNULL, stdout=DEVNULL)
@@ -80,6 +87,8 @@ class Frida:
         path = Constants.DIR_FRIDA_SCRIPTS.value
         if type == "ssl":
             file = os.path.join(path, 'bypass_ssl_pinning_various_methods.js')
+        elif type == "ssl-ios":
+            file = os.path.join(path, 'ios13-pinning-bypass.js')
         elif type == "root":
             file = os.path.join(path, 'antiroot_bypass.js')
         elif type == "ios_biometrics":
@@ -118,6 +127,22 @@ class Frida:
         def exec_new():
             self.copy_file("ssl")
             outfile = self.files['ssl-android']
+            execute_frida_command(self.config,self.temp_file,outfile)
+
+        found = find_command('frida', self.config["app"])
+        if not found:
+            exec_new()
+        else:
+            exec_running()
+
+    def bypass_ssl_ios(self):
+        def exec_running():
+            self.copy_file("ssl-ios")
+            print(Fore.GREEN + '[+] The command was executed successfully!' + Fore.RESET)
+            
+        def exec_new():
+            self.copy_file("ssl-ios")
+            outfile = self.files['ssl-ios']
             execute_frida_command(self.config,self.temp_file,outfile)
 
         found = find_command('frida', self.config["app"])
