@@ -707,6 +707,63 @@ class MassiveMobileSecurityFramework:
             back()
             return 2
 
+    def generate_malicious_poc(self, cmd, data):
+        self._other_tools.snake_data = data
+        if cmd == "run": 
+            if data["type"]:
+                threading.Thread(target=self._other_tools.generate_snakeyml_payload, args=([])).start()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "TYPE", "value": self._other_tools.snake_data["type"], "description": "The type of exploit to use. Choose from write_to_sd, exec_cmd, and oob", "required": True},
+                {"name": "FILENAME", "value": self._other_tools.snake_data["filename"], "description": "The file name. Default to: snake_poc.yml", "required": False},
+                {"name": "PATH", "value": self._other_tools.snake_data["path"], "description": "The path where to save the file. Default to: ~/.mmsf/loot/", "required": True},
+                {"name": "MAL_URL", "value": self._other_tools.snake_data["mal_url"], "description": "If type set to oob, set the URL as: http://localhost:8080/", "required": True},
+                {"name": "CMD", "value": self._other_tools.snake_data["cmd"], "description": "If type set to exec_cmd, set the value as: touch /sdcard/command-executed.txt && echo \'RCE successful\' > /sdcard/command-executed.txt", "required": True},
+            ])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+        
+    def execute_malicious_poc(self, cmd, data):
+        self._other_tools.snake_data = data
+        if cmd == "run": 
+            if data["exec_mode"]:
+                if data["exec_mode"] == "push_to_sd":
+                    threading.Thread(target=self._other_tools.execute_snakeyml_payload, args=([])).start()
+                    return 1
+                elif data["exec_mode"] == "launch_deeplink":
+                    if data["app_name"] and data["component"]:
+                        threading.Thread(target=self._other_tools.execute_snakeyml_payload, args=([])).start()
+                        return 1
+                    else:
+                        print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                        return 0      
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "EXEC_MODE", "value": self._other_tools.snake_data["exec_mode"], "description": "The type of exploit to use. Choose from push_to_sd, and launch_deeplink", "required": True},
+                {"name": "FILENAME", "value": self._other_tools.snake_data["filename"], "description": "The file name. Default to: snake_poc.yml", "required": False},
+                {"name": "PATH", "value": self._other_tools.snake_data["path"], "description": "The path where to save the file. Default to: ~/.mmsf/loot/", "required": False},
+                {"name": "MAL_URL", "value": self._other_tools.snake_data["mal_url"], "description": "If type set to launch_deeplink, set the URL as: http://localhost:8080/, specifically, where you host your payload", "required": False},
+                {"name": "APP_NAME", "value": self._other_tools.snake_data["app_name"], "description": "The target application", "required": False},
+                {"name": "COMPONENT", "value": self._other_tools.snake_data["component"], "description": "The target component like com.example.android.MainActivity", "required": False}
+            ])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
     def generate_deeplink(self, cmd, data):
         self._other_tools._generate_deeplink_data_d = data
         if cmd == "run": 

