@@ -48,8 +48,10 @@ mmsf (rootdetection/frida/set)> run
 |rootdetection               |  Bypass the Android root detection mechanisms through different methods|
 |sslpinning                  |  Bypass the SSL Pinning mechanism through different methods|
 |scan                        |  Scan the application to retrieve crucial information such as exported activities, path traversal, SQL injections, attack vector and so on|
+|snakeyamlexploit            |  Exploit CVE-2022-1471 in SnakeYaml Implementation|
 |sniff                       |  Sniffing a broadcast intent|
 |splitapk                    |  Generate, sign, pull and install SplitApks|
+|workprofile                 |  Handle the Work Profile applications|
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Useful commands
