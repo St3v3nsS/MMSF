@@ -636,6 +636,31 @@ class MassiveMobileSecurityFramework:
         elif cmd == "back":
             back()
             return 2
+    
+    def workprofile_getapk(self, cmd, data):
+        self._apktool.config["app"] = data["app"]
+        self._apktool.config["path"] = data["path"]
+        self._apktool.config["apk"] = data["apk"]
+
+        if cmd == "run": 
+            if self._apktool.config["app"]:
+                self._apktool.install_as_normal_user()
+                threading.Thread(target=self.pull_apk, args=([])).start()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0              
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APP", "value": self._apktool.config["app"], "description": "The application name: MyApplication"},
+                {"name": "PATH", "value": self._apktool.config["path"], "description": "The path where to save the apk. Default to: ~/.mmsf/loot/apks", "required": False},
+                {"name": "APK", "value": self._apktool.config["apk"], "description": "The target output name. Default to: base", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
 
     def extract_backup(self, cmd, data):
         self._other_tools.config = data

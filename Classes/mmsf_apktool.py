@@ -235,4 +235,11 @@ class apktool:
             self._generated_apk = os.path.join(generated_path, f'{file}.apk')
             print(Fore.GREEN + f'[+] Generating {file}.apk ... ' + Fore.RESET)
             self.generate_apk(True)
-        print(Fore.GREEN + '[+] APKS generated to: ' + str(generated_path) + Fore.RESET)    
+        print(Fore.GREEN + '[+] APKS generated to: ' + str(generated_path) + Fore.RESET)
+    
+    def install_as_normal_user(self):
+        self.reconfigure()
+        cmd_to_exec = f'{Constants.ADB.value} shell pm install-existing --user 0 {self.config["app"]}'
+        print(Fore.GREEN + '[+] Installing app as system user...' + Fore.RESET)
+        p = subprocess.run(cmd_to_exec.split(), stderr=PIPE, stdout=DEVNULL)
+        self._handle_errors(p)
