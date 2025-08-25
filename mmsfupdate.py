@@ -107,7 +107,7 @@ class Installer:
 				return False
 			
 		def is_drozer_installed():
-			image_name = 'withsecurelabs/drozer'
+			image_name = 'drozerdocker/drozer'
 			try:
 				# Run the `docker images` command to list installed images
 				output = subprocess.check_output(["docker", "images", image_name], universal_newlines=True)
@@ -203,8 +203,8 @@ class Installer:
 			print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
 			# subprocess.check_output(['docker', 'buildx', 'create', '--use'])
 			# p = subprocess.run(f'docker buildx build --platform=linux/amd64,linux/arm64/v8  --rm -t fsecure/drozer -f {os.getcwd()}/docker_files/drozer/Dockerfile .'.split(), stderr=PIPE, stdout=PIPE)
-			p = subprocess.run('docker pull withsecurelabs/drozer'.split(), stderr=PIPE, stdout=PIPE)
-			if 'Successfully tagged withsecurelabs/drozer:latest' in p.stdout.decode() or 'Downloaded newer image for withsecurelabs/drozer:latest' in p.stdout.decode():
+			p = subprocess.run('docker pull drozerdocker/drozer'.split(), stderr=PIPE, stdout=PIPE)
+			if 'Successfully tagged drozerdocker/drozer:latest' in p.stdout.decode() or 'Downloaded newer image for drozerdocker/drozer:latest' in p.stdout.decode():
 				print(Fore.GREEN + '[*] Successfully installed drozer'  + Fore.RESET)
 			else:
 				print(Fore.RED + p.stderr.decode() + Fore.RESET)
@@ -475,7 +475,7 @@ class Installer:
 				except subprocess.CalledProcessError as e:
 					print(Fore.RED + f"[-] Error cloning repository: {e}" + Fore.RESET)
 
-				os.chdir(Constants.DIR_WORKINGDIR)
+				os.chdir(Constants.DIR_WORKINGDIR.value)
 
 		self._check_installed(nuclei_cmd)
 
