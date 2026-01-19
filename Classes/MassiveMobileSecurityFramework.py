@@ -133,8 +133,10 @@ class MassiveMobileSecurityFramework:
     def get_all_apps(self) -> list:
         if self._device_type == 'iOS':
             return list()
-        final_command = " ".join(self._drozer._drozer_cmd).split() + ['-c', Commands.FIND_APP.value["cmd"], '--debug']
-        return list(map(lambda x: x.split(" ")[0], subprocess.run(final_command, stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()[2:])) 
+        final_command = " ".join(self._drozer._drozer_cmd).split() + ['-c', Commands.FIND_APP.value['cmd'], '--debug']
+        lines = subprocess.run(final_command, stdout=PIPE, stderr=DEVNULL).stdout.decode().splitlines()[2:]
+        filtered = filter(lambda x: not x.lstrip().startswith('Attempting'), lines)
+        return list(map(lambda x: x.split(" ")[0], filtered))
 
     # run all drozer scans
     def run_all(self, cmd, data):
@@ -153,6 +155,31 @@ class MassiveMobileSecurityFramework:
         elif cmd == "show":
             print_show_table([
                 {"name": "OUTDIR", "value": self._drozer.config["full_path"], "description": "The directory where the scans will save the data. Default is ~/.mmsf/loot/drozer_scans/"},
+                {"name": "APP_NAME", "value": self._drozer.config["app_name"], "description": "The name of the application to be scanned."}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+    
+    # run all drozer scans
+    def run_manifest(self, cmd, data):
+        if data["full_path"]:
+            self._drozer.config["full_path"] = data["full_path"]
+        self._drozer.config["app_name"] = data["app_name"]
+        self._drozer._regenerate()
+
+        if cmd == "run":
+            if self._drozer.config["app_name"]:
+                self._drozer.run_manifest()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0
+        elif cmd == "show":
+            print_show_table([
+                {"name": "OUTDIR", "value": self._drozer.config["full_path"], "description": "The directory where the scan will save the data. Default is ~/.mmsf/loot/drozer_scans/"},
                 {"name": "APP_NAME", "value": self._drozer.config["app_name"], "description": "The name of the application to be scanned."}])
             return 0
         elif cmd == "exit":
@@ -976,33 +1003,61 @@ class MassiveMobileSecurityFramework:
                     threading.Thread(target=self._nuclei._start_scan, args=([path])).start()
                 return 1
             elif self._nuclei.config["app_name"] and self._nuclei.config["app_name"] in self.all_apps:
+                app_name = self._nuclei.config["app_name"]
+                apk_dir = Constants.DIR_PULLED_APKS.value
+                apk_path = os.path.join(apk_dir, f"{app_name}.apk")
+
                 def previous_decompilation():
-                    return os.path.isdir(os.path.join(Constants.DIR_PULLED_APKS.value,self._nuclei.config["app_name"]))
+                    return os.path.isdir(os.path.join(apk_dir, app_name))
 
                 previous_decom = previous_decompilation()
                 decompiled = previous_decom
-                for path in paths:
-                    data_scan = {
-                        "dir_name": self._nuclei.config["app_name"],
-                        "app": self._nuclei.config["app_name"],
-                        "path": Constants.DIR_PULLED_APKS.value,
+                data_scan = {
+                        "dir_name": app_name,
+                        "app": app_name,
+                        "path": apk_dir,
                         "mode": "d",
-                        "apk": self._nuclei.config["app_name"],
+                        "apk": f"{app_name}.apk",
                         "out_apk": Constants.PATCHED_APK.value,
                         "in_apk": Constants.GENERATED_APK.value,
                     }
-                    if not decompiled or not previous_decom:
-                        self.getapk("run", data_scan)
-                        print(Fore.GREEN + '[*] Decompiling apk..' + Fore.RESET)
-                        self._apktool._decompile_apk(os.path.join(data_scan["path"],data_scan["apk"]))
-                        decompiled = True
-                        previous_decom = True
+                if not os.path.isdir(self._apktool.get_apk_dir()):
+                    print(Fore.YELLOW + f"[*] Pulling APK for {app_name}..." + Fore.RESET)
+                    self.getapk("run", data_scan)
+                    print(Fore.YELLOW + "[*] Waiting for APK extraction to finish..." + Fore.RESET)
+                    apk_path = os.path.join(data_scan["path"], data_scan["apk"])
+                    wait_count = 0
+                    while not os.path.isfile(apk_path):
+                        time.sleep(1)
+                        wait_count += 1
+                        if wait_count > 30:
+                            print(Fore.RED + f"[-] Timeout: APK {apk_path} does not exist after extraction." + Fore.RESET)
+                            return 0
+
+                    print(Fore.GREEN + '[*] Decompiling apk...' + Fore.RESET)
+                    try:
+                        self._apktool._config_split["apks"] = data_scan["apk"]
+                        self._apktool.decompile_apks(data_scan["apk"])
+                    except Exception as e:
+                        print(Fore.RED + f"[-] Decompilation failed: {e}" + Fore.RESET)
+                        return 0
+                    wait_count = 0
+                    while not os.path.isdir(self._apktool.get_apk_dir()):
+                        time.sleep(1)
+                        wait_count += 1
+                        if wait_count > 30:
+                            print(Fore.RED + f"[-] Timeout: APK {apk_path} does not exist after extraction." + Fore.RESET)
+                            return 0
+
+                for path in paths:
+                    self._nuclei.config["dir_name"] = self._apktool.get_apk_dir()
                     print(Fore.YELLOW + f"[*] Executing nuclei in background for {path} templates." + Fore.RESET)
                     threading.Thread(target=self._nuclei._start_scan, args=([path])).start()
                 return 1
-            else:
-                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
-                return 0              
+            elif self._nuclei.config["app_name"] not in self.all_apps:
+                print(Fore.RED + "[-] The application was not found on the device. Try again!" + Fore.RESET)
+                return 0
+             
         elif cmd == "show":
             print_show_table([
                 {"name": "APP_NAME", "value": self._nuclei.config["app_name"], "description": "The application name in form of com.example.android. Omit it if you set the DIR_NAME", "required": False},

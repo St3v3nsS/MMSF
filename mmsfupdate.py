@@ -107,12 +107,11 @@ class Installer:
 				return False
 			
 		def is_drozer_installed():
-			image_name = 'drozerdocker/drozer'
 			try:
 				# Run the `docker images` command to list installed images
-				output = subprocess.check_output(["docker", "images", image_name], universal_newlines=True)
+				output = subprocess.check_output(Constants.DROZER.value, universal_newlines=True)
 				# Check if the image is in the output
-				return image_name in output
+				return "usage: drozer [COMMAND]" in output
 			except subprocess.CalledProcessError as e:
 				# If an error occurs (e.g., Docker not installed), return False
 				return False
@@ -200,16 +199,37 @@ class Installer:
 	def _install_drozer(self):
 		installed = self._check_installed('drozer')
 		if not installed or self._forced:
-			print(Fore.YELLOW + '[*] Installing ' + Fore.RESET)
-			# subprocess.check_output(['docker', 'buildx', 'create', '--use'])
-			# p = subprocess.run(f'docker buildx build --platform=linux/amd64,linux/arm64/v8  --rm -t fsecure/drozer -f {os.getcwd()}/docker_files/drozer/Dockerfile .'.split(), stderr=PIPE, stdout=PIPE)
-			p = subprocess.run('docker pull drozerdocker/drozer'.split(), stderr=PIPE, stdout=PIPE)
-			if 'Successfully tagged drozerdocker/drozer:latest' in p.stdout.decode() or 'Downloaded newer image for drozerdocker/drozer:latest' in p.stdout.decode():
-				print(Fore.GREEN + '[*] Successfully installed drozer'  + Fore.RESET)
-			else:
-				print(Fore.RED + p.stderr.decode() + Fore.RESET)
+			print(Fore.YELLOW + '[*] Installing drozer via pipx...' + Fore.RESET)
+
+			# Ensure pipx is installed itself
+			try:
+				import pipx
+			except ImportError:
+				print(Fore.YELLOW + '[*] pipx not found, installing pipx with pip...' + Fore.RESET)
+				subprocess.run(['pip', 'install', '--user', 'pipx'], check=True)
+				subprocess.run(['pipx', 'ensurepath'], check=True)
+
+			# Try pipx ensurepath (output is helpful if PATH isn't set)
+			subprocess.run(['pipx', 'ensurepath'], stdout=PIPE, stderr=PIPE)
+			
+			# Install drozer with pipx
+			try:
+				# To allow for a local wheel, you could detect, for example:
+				# wheel_files = glob.glob('./drozer-*.whl')
+				# if wheel_files: pipx_cmd = ['pipx', 'install', wheel_files[0]]
+				pipx_cmd = ['pipx', 'install', 'drozer']
+				p = subprocess.run(pipx_cmd, stdout=PIPE, stderr=PIPE)
+				out, err = p.stdout.decode(), p.stderr.decode()
+				if 'installed package drozer' in out or p.returncode == 0:
+					print(Fore.GREEN + '[*] Successfully installed drozer via pipx'  + Fore.RESET)
+				else:
+					print(Fore.RED + err + Fore.RESET)
+			except Exception as e:
+				print(Fore.RED + f"pipx install failed: {str(e)}" + Fore.RESET)
+				return e
 		else:
-			print(Fore.GREEN + '[+] Installed' + Fore.RESET)
+			print(Fore.GREEN + '[+] drozer already installed' + Fore.RESET)
+
 	
 	def _install_reflutter(self):
 		installed = self._check_installed('reflutter')

@@ -203,7 +203,7 @@ class apktool:
         print(Fore.GREEN + '[+] APKS Signed: ' + str(self._config_split["patched_apks"]) + Fore.RESET)
         print(Fore.GREEN + '[+] APKS saved to: ' + str(signed_path) + Fore.RESET)
 
-    def decompile_apks(self):
+    def decompile_apks(self, apk_name=None):
         to_decompile = self._config_split["apks"]
         if not to_decompile:
             to_decompile = self._config_split["path"]
@@ -212,6 +212,9 @@ class apktool:
         decompiled_path = os.path.join(self._config_split["path"], "decompiled")
         mkdir(decompiled_path)
         for file in os.listdir(self._config_split["path"]):
+            if apk_name:
+                if file != apk_name:
+                    continue
             if file.endswith(".apk"):
                 fullpath = os.path.join(self._config_split["path"], file)
                 self._apk_dir = os.path.join(decompiled_path, file.split(".apk")[0])
@@ -243,3 +246,7 @@ class apktool:
         print(Fore.GREEN + '[+] Installing app as system user...' + Fore.RESET)
         p = subprocess.run(cmd_to_exec.split(), stderr=PIPE, stdout=DEVNULL)
         self._handle_errors(p)
+
+    def get_apk_dir(self):
+        decompiled = os.path.join(self._config_split["path"], "decompiled")
+        return os.path.join(decompiled, self.config["apk"].rstrip('.apk')) if os.path.isdir(decompiled) else self._apk_dir

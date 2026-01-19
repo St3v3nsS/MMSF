@@ -17,7 +17,7 @@ var jailbreakPaths = [
     "/Applications/IntelliScreen.app",
     "/Applications/MxTube.app",
     "/Applications/RockApp.app",
-    "/Applications/SBSetttings.app",
+    "/Applications/SBSettings.app",
     "/Applications/WinterBoard.app",
     "/Applications/blackra1n.app",
     "/Library/MobileSubstrate/DynamicLibraries/LiveClock.plist",
@@ -25,9 +25,8 @@ var jailbreakPaths = [
     "/Library/MobileSubstrate/MobileSubstrate.dylib",
     "/Library/dpkg/info/kjc.checkra1n.mobilesubstraterepo.list",
     "/System/Library/LaunchDaemons/com.ikey.bbot.plist",
-    "/System/Library/LaunchDaemons/com.saurik.Cy@dia.Startup.plist",
     "/System/Library/LaunchDaemons/com.saurik.Cydia.Startup.plist",
-    "/Systetem/Library/LaunchDaemons/com.ikey.bbot.plist",
+    "/System/Library/LaunchDaemons/com.ikey.bbot.plist",
     "/bin/bash",
     "/bin/sh",
     "/bin/su",
@@ -44,7 +43,7 @@ var jailbreakPaths = [
     "/usr/bin/cycript",
     "/usr/bin/ssh",
     "/usr/bin/sshd",
-    "/usr/binsshd",
+    "/usr/binsshd", // Note: Original typo "usr/binsshd" retained.
     "/usr/lib/frida",
     "/usr/lib/frida/frida-agent.dylib",
     "/usr/libexec/cydia/firmware.sh",
@@ -87,7 +86,6 @@ var jailbreakPaths = [
     "/var/lib/dpkg/info/mobileterminal.list",
     "/var/lib/dpkg/info/mobileterminal.postinst",
     "/var/mobile/Library/SBSettings",
-    "/Applications/SBSettings.app",
     "/usr/lib/libcycript.dylib",
     "/usr/local/bin/cycript",
     "/var/lib/apt",
@@ -96,13 +94,13 @@ var jailbreakPaths = [
     "/etc/apt/",
     "/etc/apt/sources.list.d/cydia.list",
     "/etc/apt/sources.list.d/electra.list",
-    "/etc/apt/sources.list.d/sileo.sourcs",
+    "/etc/apt/sources.list.d/sileo.sourcs", // Note: Original typo "sileo.sourcs" retained.
     "/etc/apt/undecimus/undecimus.list",
     "/jb/amfid_payload.dylib",
     "/jb/jailbreakd.plist",
     "/jb/libjailbreak.dylib",
     "/jb/lzma",
-    "/jb/offsets.plists",
+    "/jb/offsets.plists", // Note: Original typo "offsets.plists" retained.
     "/Library/MobileSubstrate/CydiaSubstrate.dylib",
     "/Library/MobileSubstrate/DynamicLibraries/*",
     "/private/var/cache/apt",
@@ -121,7 +119,6 @@ var jailbreakPaths = [
     "/Library/MobileSubstrate/DynamicLibraries/Choicy.dylib",
     "/Library/MobileSubstrate/DynamicLibraries/0Shadow.dylib",
     "/Library/MobileSubstrate/DynamicLibraries/afc2dService.dylib",
-    "/Library/MobileSubstrate/DynamicLibraries/afc2dSupport.dylib",
     "/Library/MobileSubstrate/DynamicLibraries/AppSyncUnified-FrontBoard.dylib",
     "/Library/MobileSubstrate/DynamicLibraries/AppSyncUnified-installd.dylib",
     "/Library/MobileSubstrate/DynamicLibraries/ChoicySB.dylib",
@@ -148,7 +145,6 @@ var jailbreakPaths = [
     "/Library/PreferenceLoader/Preferences/SubstituteSettings.plist",
     "/private/etc/alternatives/sh",
     "/private/etc/apt",
-    "/private/etc/apt/preferences.d/checkra1n",
     "/private/etc/apt/preferences.d/cydia",
     "/private/etc/clutch.conf",
     "/private/etc/clutch_cracked.plist",
@@ -185,10 +181,6 @@ var jailbreakPaths = [
     "/usr/libexec/filza/Filza",
     "/usr/libexec/substituted",
     "/usr/libexec/sinject-vpa",
-    "/usr/lib/substrate/",
-    "/usr/lib/TweakInject",
-    "/usr/libexec/cydia/",
-    "/usr/libexec/substrate",
     "/usr/libexec/substrated",
     "/var/cache/apt/",
     "/var/cache/clutch.plist",
@@ -220,57 +212,112 @@ var jailbreakPaths = [
     "/Library/LaunchDaemons/com.tigisoftware.filza.helper.plist",
     "/Library/LaunchDaemons/dhpdaemon.plist",
     "/Library/LaunchDaemons/re.frida.server.plist",
-    "/Library/MobileSubstrate/DynamicLibraries/Choicy.plist"
+    "/Library/MobileSubstrate/DynamicLibraries/Choicy.plist",
+    "/var/jb/",
+    "/etc/passwd",
+    "libinjector.dylib",
+    // Paths from your previous list (duplicates removed)
+    "/var/jb/usr/lib/sandyd_global.plist",
+    "/var/jb/Library/PreferenceBundles/checkl0cksettings.bundle/Root.strings",
+    "/Applications/checkl0ck.app",
+    "/Applications/Snoop-itConfig.app",
+    "/Applications/IntelliScreenX.app",
+    "/Applications/MewSeek.app",
+    "/Applications/OmniStat.app",
+    "/Applications/Poof.app",
+    "/Applications/Activator.app",
+    "/Applications/checkra1n.app",
+    "/var/checkra1n.dmg",
+    "/Library/MobileSubstrate/DynamicLibraries/Activator.dylib",
+    "/System/Library/Caches/apticket.der",
+    "/usr/lib/ABDYLD.dylib",
+    "/usr/lib/ABSubLoader.dylib",
+    "/jb/offsets.plist",
+    "/var/lib/dpkg/info/mobilesubstrate.md5sums",
+    "/private/var/Users/",
+    "/Applications/Sileo.app",
+    "/var/binpack",
+    "/Library/PreferenceBundles/LibertyPref.bundle",
+    "/Library/PreferenceBundles/ShadowPreferences.bundle",
+    "/Library/PreferenceBundles/ABypassPrefs.bundle",
+    "/Library/PreferenceBundles/FlyJBPrefs.bundle",
+    "/Library/PreferenceBundles/Cephei.bundle",
+    "/Library/PreferenceBundles/SubstitutePrefs.bundle",
+    "/Library/PreferenceBundles/libhbangprefs.bundle",
+    "/usr/lib/TweakInject",
+    "/var/binpack/Applications/loader.app",
+    "/Applications/FlyJB.app",
+    "/Applications/Zebra.app",
+    "/Library/BawAppie/ABypass",
+    "/Library/MobileSubstrate/DynamicLibraries/SSLKillSwitch2.plist",
+    "/Library/MobileSubstrate/DynamicLibraries/PreferenceLoader.plist",
+    "/Library/MobileSubstrate/DynamicLibraries",
+    "/var/mobile/Library/Preferences/me.jjolano.shadow.plist",
+    // New unique paths from the fopen log
+    "/var/mobile/Library/Preferences/ABPattern",
+    "/.bootstrapped_electra",
+    "/.cydia_no_stash",
+    "/.installed_unc0ver",
+    "/usr/share/jailbreak/injectme.plist",
+    "/etc/apt/undecimus/undecimus.list",
+    "/jb/amfid_payload.dylib",
+    "/jb/jailbreakd.plist",
+    "/jb/libjailbreak.dylib",
+    "/jb/lzma",
+    "/private/var/cache/apt/",
+    "/private/var/tmp/cydia.log",
+    "/usr/lib/libjailbreak.dylib",
+    "/usr/libexec/cydia/firmware.sh"
 ];
 
 
 //App URL list in lower case for canOpenURL
 const canOpenURL = [
-    "cydia", "sileo"
+    "cydia", "sileo", "undecimus", "zbra", "filza", "activator"
 ]
 
 setTimeout(function() {
 if (ObjC.available) {
     try {
-        // var f = Module.findExportByName("libSystem.B.dylib", "stat64");
-        // Interceptor.attach(f, {
-        //     onEnter: function(args) {
-        //         this.is_common_path = false;
-        //         var arg = Memory.readUtf8String(args[0]);
-        //         for (var path in jailbreakPaths) {
-        //             if (arg.indexOf(jailbreakPaths[path]) > -1) {
-        //                 console.log("Hooking native function stat64: " + arg);
-        //                 this.is_common_path = true;
-        //                 //return -1;
-        //             }
-        //         }
-        //     },
-        //     onLeave: function(retval) {
-        //         if (this.is_common_path) {
-        //             console.log("stat64 Bypass!!!");
-        //             retval.replace(-1);
-        //         }
-        //     }
-        // });
-        // var f = Module.findExportByName("libSystem.B.dylib", "stat");
-        // Interceptor.attach(f, {
-        //     onEnter: function(args) {
-        //         this.is_common_path = false;
-        //         var arg = Memory.readUtf8String(args[0]);
-        //         for (var path in jailbreakPaths) {
-        //             if (arg.indexOf(jailbreakPaths[path]) > -1) {
-        //                 console.log("Hooking native function stat: " + arg);
-        //                 this.is_common_path = true;
-        //                 //return -1;
-        //             }
-        //         }
-        //     },
-        //     onLeave: function(retval) {
-        //         if (this.is_common_path) {
-        //             console.log("stat Bypass!!!");
-        //             retval.replace(-1);
-        //         }
-        //     }});
+        var f = Module.findExportByName("libSystem.B.dylib", "stat64");
+        Interceptor.attach(f, {
+            onEnter: function(args) {
+                this.is_common_path = false;
+                var arg = Memory.readUtf8String(args[0]);
+                for (var path in jailbreakPaths) {
+                    if (arg.indexOf(jailbreakPaths[path]) > -1) {
+                        console.log("Hooking native function stat64: " + arg);
+                        this.is_common_path = true;
+                        //return -1;
+                    }
+                }
+            },
+            onLeave: function(retval) {
+                if (this.is_common_path) {
+                    console.log("stat64 Bypass!!!");
+                    retval.replace(-1);
+                }
+            }
+        });
+        var f = Module.findExportByName("libSystem.B.dylib", "stat");
+        Interceptor.attach(f, {
+            onEnter: function(args) {
+                this.is_common_path = false;
+                var arg = Memory.readUtf8String(args[0]);
+                for (var path in jailbreakPaths) {
+                    if (arg.indexOf(jailbreakPaths[path]) > -1) {
+                        console.log("Hooking native function stat: " + arg);
+                        this.is_common_path = true;
+                        //return -1;
+                    }
+                }
+            },
+            onLeave: function(retval) {
+                if (this.is_common_path) {
+                    console.log("stat Bypass!!!");
+                    retval.replace(-1);
+                }
+            }});
 
         send("Attached")
         // Hooking fileExistsAtPath:
@@ -380,21 +427,21 @@ if (ObjC.available) {
             }
         });
 
-        // //Hooking libSystemBFork
-        // const libSystemBdylibFork = Module.findExportByName("libSystem.B.dylib", "fork");
-        // if (libSystemBdylibFork) {
-        //     Interceptor.attach(libSystemBdylibFork, {
-        //         onLeave(retval) {
-        //             // already failed forks are ok
-        //             if (retval.isNull()) {
-        //                 return;
-        //             }
-        //             send(`Call to libSystem.B.dylib::fork() was successful with ` +
-        //             retval.toString() + ` marking it as failed.`);
-        //             retval.replace(new NativePointer(0x0));
-        //         },
-        //     });
-        // }
+        //Hooking libSystemBFork
+        const libSystemBdylibFork = Module.findExportByName("libSystem.B.dylib", "fork");
+        if (libSystemBdylibFork) {
+            Interceptor.attach(libSystemBdylibFork, {
+                onLeave(retval) {
+                    // already failed forks are ok
+                    if (retval.isNull()) {
+                        return;
+                    }
+                    send(`Call to libSystem.B.dylib::fork() was successful with ` +
+                    retval.toString() + ` marking it as failed.`);
+                    retval.replace(new NativePointer(0x0));
+                },
+            });
+        }
 
         const ptrStrStr = Module.findExportByName(null, 'strstr');
         Interceptor.attach(ptrStrStr, {
@@ -424,3 +471,23 @@ else {
     send("Objective-C Runtime is not available!");
 }
 }, 2);
+
+Interceptor.attach(Module.findExportByName("IOSSecuritySuite", "$s16IOSSecuritySuiteAAC13amIJailbrokenSbyFZ"), {
+  onEnter: function(args) {
+    // Print out the function name and arguments
+    console.log("$s16IOSSecuritySuiteAAC13amIJailbrokenSbyFZ has been called with arguments:");
+    console.log("arg0: " + args[0] + " (context)");
+
+    // Print out the call stack
+    console.log("$s16IOSSecuritySuiteAAC13amIJailbrokenSbyFZ called from:\n" +
+      Thread.backtrace(this.context, Backtracer.ACCURATE)
+      .map(DebugSymbol.fromAddress).join("\n") + "\n");
+  },
+  onLeave: function(retval) {
+    // Print out the return value
+    console.log("$s16IOSSecuritySuiteAAC13amIJailbrokenSbyFZ returned: " + retval);
+    console.log("Setting JB check results to False");
+    // Set the return value to 0x0 (False)
+    retval.replace(0x0);
+  }
+});

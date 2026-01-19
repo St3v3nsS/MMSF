@@ -37,7 +37,7 @@ class nuclei:
             self.config["dir_name"] = os.path.join(Constants.DIR_PULLED_APKS.value, self.config["dir_name"])
 
         command_echo = f"echo {self.config.get('dir_name')}"
-        command_nuclei = f"nuclei -t {os.path.join(Constants.DIR_NUCLEI_SCRIPTS.value, path)} -o {os.path.join(outdir,filename)}"
+        command_nuclei = f"nuclei -file -t {os.path.join(Constants.DIR_NUCLEI_SCRIPTS.value, path)} -o {os.path.join(outdir,filename)}"
 
         try:
             # Run the echo command and capture its output
@@ -50,7 +50,7 @@ class nuclei:
                 if nuclei_result.returncode == 0:
                     print(Fore.GREEN + f"\n[+] Results written at {os.path.join(outdir,filename)}" + Fore.RESET)
                 else:
-                    print(Fore.RED + '\n[-] Error nuclei command' + Fore.RESET)
+                    print(Fore.RED + f'\n[-] Error nuclei command: {nuclei_result}' + Fore.RESET)
             else:
                 print(Fore.RED + '\n[-] Error echo command' + Fore.RESET)
 

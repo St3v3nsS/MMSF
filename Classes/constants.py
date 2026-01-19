@@ -26,7 +26,7 @@ class Constants(Enum):
     BACKUP_NAME = "backup.ab"
     NUCLEI = f'{os.path.join(os.environ.get("GOPATH"), "bin/nuclei")}'
     BACKUP_COMPRESSED_NAME = "backup.tar"
-    DROZER = "docker run --network host --rm -it withsecurelabs/drozer"
+    DROZER = "drozer"
     UBERSIGNER_PATH = f"{os.path.join(DIR_UTILS_PATH,'ubersigner.jar')}"
     UBERSIGNER = f"java -jar {UBERSIGNER_PATH}"
     ZIPALIGN = "zipalign -p -f 4"

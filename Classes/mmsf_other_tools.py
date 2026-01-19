@@ -5,6 +5,7 @@ from time import sleep
 import time
 from colorama import Fore
 import os
+import re
 
 from Classes.commands import Commands
 from .constants import Constants
@@ -142,6 +143,7 @@ class OtherTools:
             f.writelines(out)
 
     def extract_backup(self):
+        threading.Thread(target=self._auto_confirm_backup, daemon=True).start()
         self._init_backup_constants()
         cmd = f'{Constants.ADB.value} backup -f {self.backup_files["backup_ab_location"]} {self.config["app"]}'
         p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
@@ -256,3 +258,39 @@ class OtherTools:
             cmd = f'adb shell am start -a android.intent.action.VIEW -n {self.snake_data["app_name"]}/{self.snake_data["component"]} -d {self.snake_data["mal_url"]}'
             p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
             print(Fore.GREEN + f'[+] Executing {cmd}' + Fore.RESET)
+
+    def _auto_confirm_backup(self, timeout=60):
+        """
+        Background helper that finds and taps the 'Back up my data' button.
+        Uses only built-in adb shell commands.
+        """
+        adb = Constants.ADB.value
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            # 1. Dump the current UI hierarchy to a temporary file on the device
+            subprocess.run(f"{adb} shell uiautomator dump /data/local/tmp/ui.xml".split(), capture_output=True)
+            
+            # 2. Read the XML content back to Python
+            dump = subprocess.run(f"{adb} shell cat /data/local/tmp/ui.xml".split(), capture_output=True, text=True).stdout
+            
+            if not dump:
+                time.sleep(2)
+                continue
+
+            # 3. Search for the 'Back up my data' button and capture its bounds [x1,y1][x2,y2]
+            # Using (?i) for case-insensitive matching to handle different Android versions
+            match = re.search(r'text="(?i)back up my data".*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', dump)
+            
+            if match:
+                x1, y1, x2, y2 = map(int, match.groups())
+                # Calculate the center of the button for the tap
+                center_x = (x1 + x2) // 2
+                center_y = (y1 + y2) // 2
+                
+                # 4. Simulate the tap at the calculated coordinates
+                subprocess.run(f"{adb} shell input tap {center_x} {center_y}".split())
+                return True
+                
+            time.sleep(2)  # Wait before next attempt
+        return False
