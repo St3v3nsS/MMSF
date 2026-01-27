@@ -253,6 +253,7 @@ var jailbreakPaths = [
     "/Library/MobileSubstrate/DynamicLibraries/PreferenceLoader.plist",
     "/Library/MobileSubstrate/DynamicLibraries",
     "/var/mobile/Library/Preferences/me.jjolano.shadow.plist",
+    "/var/jb/usr/lib/TweakInject/iGameGodLoader.dylib",
     // New unique paths from the fopen log
     "/var/mobile/Library/Preferences/ABPattern",
     "/.bootstrapped_electra",
@@ -267,7 +268,32 @@ var jailbreakPaths = [
     "/private/var/cache/apt/",
     "/private/var/tmp/cydia.log",
     "/usr/lib/libjailbreak.dylib",
-    "/usr/libexec/cydia/firmware.sh"
+    "/usr/libexec/cydia/firmware.sh",
+    "/var/jb/usr/lib/TweakInject/iGameGodLoader.plist",
+    "/var/mobile/Library/iGameGod/sp_settings.plist",
+    "/var/jb/usr/lib/TweakInject/iGSpoof.dylib",
+    "/private/preboot/153531C24E58830CEBDEEDD0DE11598185D136C555DB604D38FF248EE67B07DF853620902F0C68AB50B9197CAD0FD270/jb-aS12k17g/procursus/Library/PreferenceBundles/checkl0cksettings.bundle",
+    "/var/jb/Library/PreferenceBundles/checkl0cksettings.bundle/Root.plist",
+    "/var/jb/usr/lib/TweakInject/iGSpoof.plist",
+    "/var/jb/usr/lib/TweakInject/checkl0ck_managed_conf.dylib",
+    "/var/jb/Library/PreferenceBundles/checkl0cksettings.bundle/my_tweaks.plist",
+    "/var/jb/usr/lib/TweakInject/checkl0ck.plist",
+    "/var/jb/usr/lib/TweakInject/checkl0ck.dylib",
+    "/var/jb/usr/lib/TweakInject/bfdecrypttweak.dylib",
+    "/private/preboot/153531C24E58830CEBDEEDD0DE11598185D136C555DB604D38FF248EE67B07DF853620902F0C68AB50B9197CAD0FD270/jb-aS12k17g/procursus/Library/Frameworks/AltList.framework/AltList",
+    "/private/preboot/153531C24E58830CEBDEEDD0DE11598185D136C555DB604D38FF248EE67B07DF853620902F0C68AB50B9197CAD0FD270/jb-aS12k17g/procursus/Library/Frameworks/AltList.framework/Info.plist",
+    "/private/preboot/153531C24E58830CEBDEEDD0DE11598185D136C555DB604D38FF248EE67B07DF853620902F0C68AB50B9197CAD0FD270/jb-aS12k17g/procursus/Library/Frameworks/AltList.framework",
+    "/private/preboot/153531C24E58830CEBDEEDD0DE11598185D136C555DB604D38FF248EE67B07DF853620902F0C68AB50B9197CAD0FD270/jb-aS12k17g/procursus/Library/Frameworks/Modulous.framework/Modulous",
+    "/var/jb/var/mobile/Library/Preferences/alias20.bfdecryptor.plis",
+    "/var/jb/usr/lib/TweakInject/bfdecryptor.dylib",
+    "/var/jb/var/mobile/Library/Preferences/com.level3tjg.bfdecrypt.plist",
+    "/var/jb/usr/lib/TweakInject/bfdecryptor.plist",
+    "/var/jb/usr/lib/TweakInject/bfdecrypt.dylib",
+    "/var/jb/usr/lib/TweakInject/bfdecrypt.plist",
+    "/var/jb/usr/lib/TweakLoader.dylib",
+    "/var/jb/usr/lib/TweakInject/AppSyncUnified-FrontBoard.dylib",
+    "/var/jb/usr/lib/TweakInject/SSLKillSwitch3.dylib",
+    "/var/jb/usr/lib/TweakInject/Shadow.dylib"
 ];
 
 
@@ -472,22 +498,3 @@ else {
 }
 }, 2);
 
-Interceptor.attach(Module.findExportByName("IOSSecuritySuite", "$s16IOSSecuritySuiteAAC13amIJailbrokenSbyFZ"), {
-  onEnter: function(args) {
-    // Print out the function name and arguments
-    console.log("$s16IOSSecuritySuiteAAC13amIJailbrokenSbyFZ has been called with arguments:");
-    console.log("arg0: " + args[0] + " (context)");
-
-    // Print out the call stack
-    console.log("$s16IOSSecuritySuiteAAC13amIJailbrokenSbyFZ called from:\n" +
-      Thread.backtrace(this.context, Backtracer.ACCURATE)
-      .map(DebugSymbol.fromAddress).join("\n") + "\n");
-  },
-  onLeave: function(retval) {
-    // Print out the return value
-    console.log("$s16IOSSecuritySuiteAAC13amIJailbrokenSbyFZ returned: " + retval);
-    console.log("Setting JB check results to False");
-    // Set the return value to 0x0 (False)
-    retval.replace(0x0);
-  }
-});

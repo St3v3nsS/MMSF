@@ -632,7 +632,7 @@ class MassiveMobileSecurityFramework:
         for line in output:
             file_path = pattern.findall(line)[0]
             file_name = os.path.splitext(os.path.basename(file_path))
-            if self._apktool.config["apk"] == "base":
+            if self._apktool.config["apk"].startswith("base"):
                 self._apktool.config["apk"] = file_name[0]
             self._apktool.reconfigure()
             pull_cmd = [Constants.ADB.value, 'pull', file_path, os.path.join(self._apktool.config["path"], self._apktool.config["apk"])]
@@ -1275,4 +1275,81 @@ class MassiveMobileSecurityFramework:
             quit_app()
         elif cmd == "back":
             back()
+            return 2
+        
+    def ngbackup_extract(self, cmd, data, method="legacy"):
+        """Unified ng-backup extraction handler"""
+        if data["app"]:
+            self._other_tools.config["app"] = data["app"]
+        if data["path"]:
+            self._other_tools.config["path"] = data["path"]
+        if data.get("password"):
+            self._other_tools.config["password"] = data["password"]
+        
+        if cmd == "run":
+            if not self._other_tools.config["app"]:
+                print(Fore.RED + "[-] Set APP first!" + Fore.RESET)
+                return 0
+            
+            # Handle patch method using split APK workflow
+            if method == "patch":
+                package = self._other_tools.config["app"]
+                output_path = os.path.join(Constants.DIR_PULLED_APKS.value, package)
+                os.makedirs(output_path, exist_ok=True)
+                
+                print(Fore.YELLOW + "[*] Extracting via APK patching..." + Fore.RESET)
+                
+                try:
+                    # Pull APKs using split APK workflow
+                    self._apktool.config["app"] = package
+                    self._apktool.config["path"] = output_path
+                    self.pull_apk()  # This pulls to output_path
+                    
+                    # Set up split APK config
+                    self._apktool._config_split["path"] = output_path
+                    self._apktool._config_split["app"] = package
+                    
+                    # Get the pulled APK name
+                    apk_name = self._apktool.config["apk"]
+                    
+                    # ** Direct patch using split APK infrastructure **
+                    print(Fore.YELLOW + "[*] Patching APK (direct method)..." + Fore.RESET)
+                    signed_apk = self._apktool.patch_manifest_direct(package, output_path)
+                    
+                    if not signed_apk:
+                        raise Exception("Direct patching failed")
+                    
+                    # Install patched APK
+                    cmd_install = f"{Constants.ADB.value} install -r -d {signed_apk}"
+                    print(Fore.YELLOW + "[*] Installing patched APK..." + Fore.RESET)
+                    result = subprocess.run(cmd_install.split(), capture_output=True, text=True)
+                    
+                    if result.returncode != 0:
+                        raise Exception(f"Installation failed: {result.stderr}")
+                    
+                    print(Fore.GREEN + "[+] Patched APK installed successfully" + Fore.RESET)
+                    
+                    # Extract via run-as
+                    print(Fore.YELLOW + "[*] Extracting data via run-as..." + Fore.RESET)
+                    self._other_tools.extract_backup(method="runas")
+                    
+                except Exception as e:
+                    print(Fore.RED + f"[-] Patching failed: {e}" + Fore.RESET)
+                    print(Fore.YELLOW + "[!] Falling back to legacy method..." + Fore.RESET)
+                    self._other_tools.extract_backup(method="legacy")
+            else:
+                # Use mmsf_other_tools for other methods
+                self._other_tools.extract_backup(method=method)
+            
+            return 1
+            
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APP", "value": self._other_tools.config["app"], "description": "Package name"},
+                {"name": "PATH", "value": self._other_tools.config["path"], "description": "Output directory"}
+            ])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
             return 2

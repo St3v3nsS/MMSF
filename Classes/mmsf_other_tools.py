@@ -142,17 +142,76 @@ class OtherTools:
         with open(self.backup_files["package_list"], 'w') as f:
             f.writelines(out)
 
-    def extract_backup(self):
-        threading.Thread(target=self._auto_confirm_backup, daemon=True).start()
-        self._init_backup_constants()
-        cmd = f'{Constants.ADB.value} backup -f {self.backup_files["backup_ab_location"]} {self.config["app"]}'
-        p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
-        time.sleep(5)
-        cmd_unpack = f'{self._abe} unpack {self.backup_files["backup_ab_location"]} {self.backup_files["backup_tar_location"]} {self.config["password"]}'
-        p = subprocess.run(cmd_unpack.split(), stderr=PIPE, stdout=PIPE)
-        cmd_untar = f'tar -C {self.config["path"]} -xf {self.backup_files["backup_tar_location"]}'
-        p = subprocess.run(cmd_untar.split(), stderr=PIPE, stdout=PIPE)
-        self.get_package_list()
+    def extract_backup(self, method="legacy"):
+        """Extract backup - supports multiple methods"""
+        package = self.config["app"]
+        output_path = self.config["path"]
+        
+        # Method 1: Rooted
+        if method == "rooted":
+            print(Fore.YELLOW + "[*] Extracting via root..." + Fore.RESET)
+            check_cmd = f"{Constants.ADB.value} shell su -c id"
+            if "uid=0" not in subprocess.run(check_cmd.split(), capture_output=True, text=True).stdout:
+                print(Fore.RED + "[-] Root not available" + Fore.RESET)
+                return False
+            
+            selinux_cmd = f"{Constants.ADB.value} shell getenforce"
+            if "Enforcing" in subprocess.run(selinux_cmd.split(), capture_output=True, text=True).stdout:
+                subprocess.run(f"{Constants.ADB.value} shell su -c 'setenforce 0'".split(), stderr=PIPE, stdout=PIPE)
+            
+            os.makedirs(output_path, exist_ok=True)
+            tar_file = os.path.join(output_path, f"{package}.tar")
+            tar_cmd = f"{Constants.ADB.value} shell su -c 'tar -cf - /data/data/{package}'"
+            
+            with open(tar_file, "wb") as f:
+                p = subprocess.Popen(tar_cmd, shell=True, stdout=subprocess.PIPE)
+                f.write(p.communicate()[0])
+            
+            extract_dir = os.path.join(output_path, package)
+            os.makedirs(extract_dir, exist_ok=True)
+            subprocess.run(f"tar -xf {tar_file} -C {extract_dir} --strip-components=3".split(), stderr=PIPE, stdout=PIPE)
+            print(Fore.GREEN + f"[+] Extracted to {extract_dir}" + Fore.RESET)
+            self.get_package_list()
+            return True
+        
+        # Method 2: run-as
+        elif method == "runas":
+            print(Fore.YELLOW + "[*] Extracting via run-as..." + Fore.RESET)
+            check_cmd = f"{Constants.ADB.value} shell run-as {package} id"
+            if subprocess.run(check_cmd.split(), capture_output=True).returncode != 0:
+                print(Fore.RED + "[-] App is not debuggable" + Fore.RESET)
+                return False
+            
+            os.makedirs(output_path, exist_ok=True)
+            tar_file = os.path.join(output_path, f"{package}.tar")
+            tar_cmd = f"{Constants.ADB.value} shell 'run-as {package} tar -c .'"
+            
+            with open(tar_file, "wb") as f:
+                p = subprocess.Popen(tar_cmd, shell=True, stdout=subprocess.PIPE)
+                f.write(p.communicate()[0])
+            
+            extract_dir = os.path.join(output_path, package)
+            os.makedirs(extract_dir, exist_ok=True)
+            subprocess.run(f"tar -xf {tar_file} -C {extract_dir}".split(), stderr=PIPE, stdout=PIPE)
+            print(Fore.GREEN + f"[+] Extracted to {extract_dir}" + Fore.RESET)
+            self.get_package_list()
+            return True
+        
+        # Method 3: Legacy
+        else:
+            threading.Thread(target=self._auto_confirm_backup, daemon=True).start()
+            self._init_backup_constants()
+            cmd = f'{Constants.ADB.value} backup -f {self.backup_files["backup_ab_location"]} {self.config["app"]}'
+            p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
+            time.sleep(5)
+            cmd_unpack = f'{self._abe} unpack {self.backup_files["backup_ab_location"]} {self.backup_files["backup_tar_location"]} {self.config["password"]}'
+            p = subprocess.run(cmd_unpack.split(), stderr=PIPE, stdout=PIPE)
+            cmd_untar = f'tar -C {self.config["path"]} -xf {self.backup_files["backup_tar_location"]}'
+            p = subprocess.run(cmd_untar.split(), stderr=PIPE, stdout=PIPE)
+            self.get_package_list()
+            print(Fore.GREEN + f"[+] Extracted to {self.config['path']}" + Fore.RESET)
+            return True
+
 
     def restore_backup(self):
         if not os.path.isfile(self.backup_files["package_list"]):
