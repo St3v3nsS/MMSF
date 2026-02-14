@@ -18,7 +18,7 @@ from Classes.constants import Constants
 from Classes.mmsf_apktool import apktool
 from Classes.mmsf_frida import Frida
 from Classes.mmsf_objection import objection
-from Classes.mmsf_flutter import reflutter
+from Classes.mmsf_reflutter import reflutter
 from Classes.mmsf_nuclei import nuclei
 from Classes.mmsf_other_tools import OtherTools
 from Classes.utils import *
@@ -928,7 +928,235 @@ class MassiveMobileSecurityFramework:
 
     # Use reflutter to patch ssl pinning apk
     def reflutter_sslpinning(self, cmd, data):
-        self._reflutter.bypass_ssl_pinning()
+        """
+        ReFlutter SSL pinning bypass workflow using existing MMSF infrastructure
+        """
+        
+        # Set configuration from data
+        self._reflutter.set_config("app", data.get("app"))
+        self._reflutter.set_config("apk_path", data.get("apk_path"))
+        self._reflutter.set_config("burp_host", data.get("burp_host", "127.0.0.1"))
+        
+        if cmd == "run":
+            if not self._reflutter.config["app"] and not self._reflutter.config["apk_path"]:
+                print(Fore.RED + "[-] APP name or apk_path is required!" + Fore.RESET)
+                return 0
+                
+            print(Fore.CYAN + "\n" + "="*70 + Fore.RESET)
+            print(Fore.GREEN + "    ReFlutter SSL Pinning Bypass Workflow" + Fore.RESET)
+            print(Fore.CYAN + "="*70 + "\n" + Fore.RESET)
+            
+            # Step 1: Check if app is Flutter-based
+            print(Fore.YELLOW + "[*] Checking if app is Flutter-based..." + Fore.RESET)
+            
+            if self._reflutter.get_config("apk_path"):
+                # Set pulled_apk_dirs to the directory containing the APK
+                output_path = pulled_apks_dir = os.path.dirname(self._reflutter.get_config("apk_path"))
+                # Set base_apk_path to the APK path itself
+                base_apk_path = self._reflutter.get_config("apk_path")
+            else:
+            # Pull APK using existing MMSF methods
+                package = self._reflutter.config["app"]
+                output_path = os.path.join(Constants.DIR_PULLED_APKS.value)
+                os.makedirs(output_path, exist_ok=True)
+                
+                # Use existing APK pull method
+                self._apktool._config_split["path"]= output_path
+                self._apktool._config_split["app"] = package
+                self.pull_apks()  # This will pull to output_path
+
+                pulled_apks_dir = os.path.join(output_path, package)  # Assuming pull_apks saves as package.apk
+                base_apk_path = os.path.join(pulled_apks_dir, f"base.apk")
+
+                if not base_apk_path or not os.path.exists(base_apk_path):
+                    print(Fore.RED + "[-] Could not pull APK" + Fore.RESET)
+                    return 0
+                
+            # Check if it's actually a Flutter app
+            if not self._reflutter.is_flutter_app(base_apk_path):
+                print(Fore.RED + "[-] This is not a Flutter application" + Fore.RESET)
+                return 0
+
+            self._reflutter.config["apk_path"] = base_apk_path
+            self._reflutter.config["output_path"] = output_path
+            
+            try:                    
+                # Check if it's a split APK by looking for split files
+                split_apk_files = [f for f in os.listdir(pulled_apks_dir) if f.startswith('split_config')]
+                is_split_apk = len(split_apk_files) > 0
+                
+                if is_split_apk:
+                    print(Fore.YELLOW + "[*] Detected split APK structure" + Fore.RESET)
+                    
+                    # Find the correct split APK based on architecture and OS
+                    # Look for split_config.arm64_v8a.apk first
+                    split_file_version = None
+                    for split_file in split_apk_files:
+                        if 'arm64_v8a' in split_file:
+                            split_file_version = split_file
+                            break
+                        elif 'armeabi_v7a' in split_file:
+                            split_file_version = split_file  # Fallback to armeabi_v7a if arm64_v8a not found
+                            break
+                        elif 'x86_64' in split_file:
+                            split_file_version = split_file  # Fallback to x86_64 if no ARM splits found
+                            break
+                        elif 'x86' in split_file:
+                            split_file_version = split_file  # Fallback to x86 if no better option found
+                            break
+                        elif 'armeabi' in split_file:
+                            split_file_version = split_file  # Fallback to armeabi if no better option found
+                            break
+                    
+                    # If still no split found, use the first split config file
+                    if not split_file_version and split_apk_files:
+                        split_file_version = split_apk_files[0]
+                    
+                    if split_file_version:
+                        print(Fore.YELLOW + f"[*] Using split APK: {split_file_version}" + Fore.RESET)
+                        self._reflutter.config["apk_path"] = os.path.join(pulled_apks_dir, split_file_version)
+                        
+                        print(Fore.YELLOW + "[*] Patching APK with ReFlutter..." + Fore.RESET)
+                        patched_apk = self._reflutter.patch_apk()
+                        
+                        if not patched_apk:
+                            print(Fore.RED + "[-] APK patching failed" + Fore.RESET)
+                            return 0
+                        
+                        splits = []
+                        for split_file in split_apk_files:
+                            if split_file != split_file_version:
+                                splits.append(os.path.join(pulled_apks_dir, split_file))
+
+                        self._apktool._config_split["apks"] = ",".join(splits)
+                        self._apktool._config_split["path"] = pulled_apks_dir
+
+                        # Create temp directory
+                        temp_dir = os.path.join(pulled_apks_dir, "temp_reflutter")
+                        os.makedirs(temp_dir, exist_ok=True)
+
+                        print(Fore.YELLOW + f"[*] Moving files to temp directory: {temp_dir}" + Fore.RESET)
+
+                        # Move release.RE.apk to temp directory
+                        temp_patched_apk = os.path.join(temp_dir, "release.RE.apk")
+                        shutil.move(patched_apk, temp_patched_apk)
+                        print(Fore.GREEN + f"[+] Moved {patched_apk} → {temp_patched_apk}" + Fore.RESET)
+
+                        # Move original split_file_version to temp directory as backup
+                        original_split_path = os.path.join(pulled_apks_dir, split_file_version)
+                        temp_original_split = os.path.join(temp_dir, f"{split_file_version}.original")
+                        shutil.move(original_split_path, temp_original_split)
+                        print(Fore.GREEN + f"[+] Moved {original_split_path} → {temp_original_split}" + Fore.RESET)
+
+                        # Rename release.RE.apk to split_file_version name
+                        renamed_patched_apk = os.path.join(temp_dir, split_file_version)
+                        shutil.move(temp_patched_apk, renamed_patched_apk)
+                        print(Fore.GREEN + f"[+] Renamed release.RE.apk → {split_file_version}" + Fore.RESET)
+
+                        self._apktool.decompile_apks()
+                        self._apktool._config_split["path"] = os.path.join(pulled_apks_dir, "decompiled")
+                        self._apktool.generate_apks()
+                        self._apktool._config_split["path"] = os.path.join(os.path.join(pulled_apks_dir, "decompiled"), "modified")
+
+                        # Move renamed patched APK to final destination
+                        final_destination = os.path.join(self._apktool._config_split["path"], split_file_version)
+                        shutil.move(renamed_patched_apk, final_destination)
+                        print(Fore.GREEN + f"[+] Moved to final destination: {final_destination}" + Fore.RESET)
+
+                        # Cleanup temp directory (optional - keep backup if needed)
+                        shutil.rmtree(temp_dir)
+                        self._apktool._config_split["apks"] = None  # Clear split APK config since we moved the patched APK to the final location
+
+                        # Step 4: Sign the patched APK
+                        print(Fore.YELLOW + "[*] Signing patched APK..." + Fore.RESET)
+                        self._apktool.sign_apks()
+
+                        self._apktool._config_split["path"] = os.path.join(os.path.join(os.path.join(pulled_apks_dir, "decompiled"), "modified"), "signed")
+                            
+                        # Step 5: Install the signed APK
+                        print(Fore.YELLOW + "[*] Installing signed APK..." + Fore.RESET)
+
+                        print(Fore.YELLOW + "\n[*] Application installation options:" + Fore.RESET)
+                        choice = input("Do you want to uninstall and reinstall the app? (y/n): ").strip().lower()
+                        
+                        if choice in ['y', 'yes']:
+                            print(Fore.YELLOW + "[*] Uninstalling existing app..." + Fore.RESET)
+                            # Uninstall the app
+                            self._apktool.config["app"] = self._reflutter.config["app"]  # Ensure app is set for uninstall
+                            self._apktool.uninstall_apk()
+                            self._apktool.install_apks()
+                        else:
+                            print(Fore.YELLOW + "[*] Install the app manually: adb install-multiple -r base.apk split1.apk split2.apk " +  + Fore.RESET)
+
+                            
+                        print(Fore.GREEN + "[+] ReFlutter SSL pinning bypass completed successfully!" + Fore.RESET)
+                        print(Fore.GREEN + f"[+] Installed: {self._reflutter.config['app']}" + Fore.RESET)
+                        return 1
+
+                else:
+                    print(Fore.YELLOW + "[*] Patching APK with ReFlutter..." + Fore.RESET)
+                    patched_apk = self._reflutter.patch_apk()
+                    
+                    if not patched_apk:
+                        print(Fore.RED + "[-] APK patching failed" + Fore.RESET)
+                        return 0
+
+                    # Step 4: Sign the patched APK
+                    print(Fore.YELLOW + "[*] Signing patched APK..." + Fore.RESET)
+                    patched_apk_path = os.path.join(pulled_apks_dir, patched_apk)
+                    self._apktool.sign_apk(patched_apk_path)
+
+                    try:
+                        # Use aapt to extract package name from APK
+                        aapt_cmd = f"{Constants.AAPT.value} dump badging \"{base_apk_path}\" | grep package"
+                        result = subprocess.run(aapt_cmd, shell=True, capture_output=True, text=True)
+                        if result.returncode == 0:
+                            # Extract package name from output like: package: name='com.example.app' versionCode='1' versionName='1.0'
+                            output = result.stdout.strip()
+                            package_match = re.search(r"name='([^']+)'", output)
+                            if package_match:
+                                self._reflutter.config["app"] = package_match.group(1)
+                        else:
+                            print(Fore.YELLOW + "[*] Could not read APK manifest" + Fore.RESET)
+                    except Exception as e:
+                        print(Fore.YELLOW + f"[*] Error reading APK manifest: {e}" + Fore.RESET)
+
+                    print(Fore.YELLOW + "\n[*] Application installation options:" + Fore.RESET)
+                    choice = input("Do you want to uninstall and reinstall the app? (y/n): ").strip().lower()
+                    
+                    if choice in ['y', 'yes']:
+                        print(Fore.YELLOW + "[*] Uninstalling existing app..." + Fore.RESET)
+                        # Uninstall the app
+                        self._apktool.config["app"] = self._reflutter.config["app"]  # Ensure app is set for uninstall
+                        self._apktool.uninstall_apk()
+                        # Step 5: Install the signed APK
+                        print(Fore.YELLOW + "[*] Installing signed APK..." + Fore.RESET)
+                        cmd_install = f"{Constants.ADB.value} install -r {self._apktool._patched_apk}"
+                        result = subprocess.run(cmd_install.split(), capture_output=True, text=True)
+                        if result.returncode != 0:
+                            print(Fore.RED + f"[-] Installation failed: {result.stderr}" + Fore.RESET)
+                            return 0
+                    else:
+                        print(Fore.YELLOW + "[*] Install the app manually: adb install -r base.apk " +  + Fore.RESET)
+
+                    print(Fore.GREEN + "[+] ReFlutter SSL pinning bypass completed successfully!" + Fore.RESET)
+                    print(Fore.GREEN + f"[+] Installed: {self._reflutter.config['app']}" + Fore.RESET)
+                    return 1
+
+            except Exception as e:
+                    print(Fore.RED + f"[-] Error processing APK: {e}" + Fore.RESET)
+                    return 0
+            
+        elif cmd == "show":
+            print_show_table([
+            {"name": "APP", "value": self._apktool._config_split["app"], "description": "The application name: MyApplication. Omit if APK_PATH is set", "required": False},
+            {"name": "APK_PATH", "value": self._apktool._config_split.get("apk_path"), "description": "Direct path to APK file. If set, APP is not required", "required": False},
+            {"name": "BURP_HOST", "value": self._apktool._config_split.get("burp_host", "127.0.0.1"), "description": "Burp proxy host for SSL pinning bypass", "required": False},])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            return 2
 
     # Antifrida bypass
     def antifrida_bypass(self, cmd, data):
@@ -1164,11 +1392,10 @@ class MassiveMobileSecurityFramework:
             file_path = Path(pattern.findall(line)[0]).parent
             pull_files = self.list_readable_files(file_path)
             dst = os.path.join(self._apktool._config_split["path"],self._apktool._config_split["app"])
-            os.mkdir(dst)
+            os.makedirs(dst, exist_ok=True)
             for file in pull_files:
                 pull_cmd = [Constants.ADB.value, 'pull', file, dst]
                 p = subprocess.run(pull_cmd, stdout=PIPE, stderr=PIPE)
-                print(Fore.GREEN + '[+] ' +  p.stdout.decode().strip() + Fore.RESET)
             print(Fore.GREEN + f'[+] Data pulled successfully to {dst}' + Fore.RESET)
             return
         print(Fore.RED + '[-] The application does not exist. Try again' + Fore.RESET)

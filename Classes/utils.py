@@ -323,6 +323,6 @@ def zipalign():
 def mkdir(path):
     if not os.path.isdir(path):
         try:
-            os.mkdir(path)
+            os.makedirs(path, exist_ok=True)
         except OSError as e:
             print(Fore.LIGHTBLUE_EX + '[DEBUG] ' + e + Fore.RESET)

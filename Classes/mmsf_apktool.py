@@ -83,13 +83,14 @@ class apktool:
         p = subprocess.run(cmd.split(), stderr=PIPE, stdout=PIPE)
         self._handle_errors(p)
 
-    def sign_apk(self):
-        self.reconfigure(sign=True)
-        self.align_apk()
-        cmd_to_run = f"{Constants.UBERSIGNER.value} -a {self._aligned_apk}"
+    def sign_apk(self, path_to_apk="default"):
+        if path_to_apk == "default":
+            self.reconfigure(sign=True)
+            path_to_apk = self._generated_apk[:-4]
+        cmd_to_run = f"{Constants.UBERSIGNER.value} -a {path_to_apk}"
         p = subprocess.run(cmd_to_run.split(), stderr=PIPE, stdout=DEVNULL)
         self._handle_errors(p)
-        self._patched_apk = self._aligned_apk[:-4] + '-debugSigned.apk'
+        self._patched_apk = path_to_apk.rstrip(".apk") + '-aligned-debugSigned.apk'
         print(Fore.GREEN + '[+] APK Signed: ' + self._patched_apk + Fore.RESET)
 
     def install_apk(self):
@@ -190,18 +191,32 @@ class apktool:
             to_sign = self._config_split["path"]
         else:
             to_sign = [x.strip() for x in self._config_split["apks"].split(',')]
+        
         cmd_to_run = f"{Constants.UBERSIGNER.value} -a {to_sign}"
         p = subprocess.run(cmd_to_run.split(), stderr=PIPE, stdout=DEVNULL)
         self._handle_errors(p)
+        
         signed_path = os.path.join(self._config_split["path"], "signed")
         mkdir(signed_path)
+        
         for file in os.listdir(self._config_split["path"]):
             if file.endswith("debugSigned.apk"):
                 fullpath = os.path.join(self._config_split["path"], file)
-                shutil.move(fullpath, signed_path)
-        self._config_split["patched_apks"] = os.listdir(signed_path)
+                destination = os.path.join(signed_path, file)
+                
+                # Force overwrite: remove destination if exists
+                if os.path.exists(destination):
+                    os.remove(destination)
+                    print(Fore.YELLOW + f"[*] Overwriting: {file}" + Fore.RESET)
+                
+                shutil.move(fullpath, destination)
+        
+        self._config_split["patched_apks"] = [
+            os.path.join(signed_path, f) for f in os.listdir(signed_path)
+        ]
         print(Fore.GREEN + '[+] APKS Signed: ' + str(self._config_split["patched_apks"]) + Fore.RESET)
         print(Fore.GREEN + '[+] APKS saved to: ' + str(signed_path) + Fore.RESET)
+
 
     def decompile_apks(self, apk_name=None, skip_resources=True):
         to_decompile = self._config_split["apks"]
@@ -387,3 +402,11 @@ class apktool:
             print(Fore.RED + f"[-] Patching failed: {e}" + Fore.RESET)
             print(Fore.YELLOW + "[!] This APK cannot be patched (likely obfuscated, manual attention might be needed). In case the application was successfully rebuild, use the legacy submodule." + Fore.RESET)
             return None
+
+    def uninstall_apk(self):
+        uninstall_cmd = f"adb uninstall {self.config['app']}"
+        try:
+            subprocess.run(uninstall_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(Fore.GREEN + "[+] App uninstalled successfully" + Fore.RESET)
+        except subprocess.CalledProcessError:
+            print(Fore.YELLOW + "[*] App may not be installed or uninstall failed" + Fore.RESET)

@@ -5,6 +5,7 @@ class Constants(Enum):
     DELIM = " " * 10  + "|  "
     MMSF_COMMANDS = ["back", "run", "set", "show", "exit"]
     ADB = "adb"
+    AAPT = "aapt"
     DIR_HOMEDIR = os.path.expanduser('~')
     DIR_WORKINGDIR = os.path.join(DIR_HOMEDIR, '.mmsf')
     DIR_LOOT_PATH = os.path.join(DIR_WORKINGDIR, 'loot')
@@ -19,6 +20,7 @@ class Constants(Enum):
     GENERATED_APK = os.path.join(DIR_PULLED_APKS, 'base_unsigned.apk')
     PATCHED_APK = os.path.join(DIR_PULLED_APKS, 'base_patched.apk')
     APKTOOL_PATH = '/usr/local/bin/apktool'
+    APKTOOL_PATH_MACOS = '/opt/homebrew/bin/apktool'
     APKTOOL_JAR_PATH = '/usr/local/bin/apktool.jar'
     NEWBACKUP_NAME_TAR = "newbackup.tar"
     NEWBACKUP_NAME = "newbackup.ab"
