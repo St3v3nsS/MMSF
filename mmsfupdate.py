@@ -24,7 +24,7 @@ class Installer:
 
 	def _install_dep(self):
 			print('[+] Installing python dependencies')
-			subprocess.check_call([sys.executable, "-m", "pip", "install", '-r', 'requirements.txt'])
+			subprocess.check_call([sys.executable, "-m", "pip", "install", '-r', os.path.join(os.path.dirname(os.path.abspath(__file__)),'requirements.txt')])
 
 	def __mkdir(self, path):
 		if not os.path.isdir(path):
@@ -456,9 +456,8 @@ class Installer:
 	def copy_frida_scripts(self):
 		path = Constants.DIR_FRIDA_SCRIPTS.value
 		self.__mkdir(path)
-		copy_tree('Frida_Scripts', path)
+		copy_tree(os.path.join(os.path.dirname(os.path.abspath(__file__)),'Frida_Scripts'), path)
 		
-
 	def _install_nuclei(self):
 		nuclei_cmd = f'{Constants.NUCLEI.value} -version'
 		installed = self._check_installed(nuclei_cmd)

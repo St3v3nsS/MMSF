@@ -50,7 +50,9 @@ class Frida:
                       'biometrics-android': os.path.join(self.temp_dir,'frida-biometrics-android.log'),
                       'jailbreak-ios': os.path.join(self.temp_dir,'frida-jailbreak-ios.log'),
                       'nsuserdefaults-modify': os.path.join(self.temp_dir,'frida-nsuserdefaults-modify.log'),
-                      'nsuserdefaults-retrieve': os.path.join(self.temp_dir,'frida-nsuserdefaults-retrieve.log')}
+                      'nsuserdefaults-retrieve': os.path.join(self.temp_dir,'frida-nsuserdefaults-retrieve.log'),
+                      'ssl-flutter': os.path.join(self.temp_dir, 'frida-ssl-flutter.log'),
+        }
         
         for file in self.files.keys():
             if (os.path.exists(self.files[file])):
@@ -105,12 +107,14 @@ class Frida:
         elif type == "nsuserdefaults-retrieve":
             file = os.path.join(path, 'nsuserdefaults-retrieve.js')
             print(Fore.RED + file + Fore.RESET)
+        elif type == "ssl-flutter":
+            file = os.path.join(path, 'disable_flutter_tls.js')
         else:
             file = tempfile.mkstemp(dir=self.temp_dir, suffix=".js")
         
         with open(self.temp_file,'r') as secondfile:
             for line in secondfile:
-                if (type == "root" and "[+] Antiroot bypass [+]" in line) or (type == "ssl" and "[#] Android Bypass for various Certificate Pinning methods [#]" in line) or (type == "ios_jailbreak_bypass" and "jailbreakPaths" in line):
+                if (type == "root" and "[+] Antiroot bypass [+]" in line) or (type == "ssl" and "[#] Android Bypass for various Certificate Pinning methods [#]" in line) or (type == "ios_jailbreak_bypass" and "jailbreakPaths" in line) or (type == "ssl-flutter" and "disableFlutterTLS" in line):
                     return
         
         with open(file,'r') as firstfile, open(self.temp_file,'a') as secondfile:
@@ -266,6 +270,22 @@ class Frida:
             cmd = f'frida {self._config["mode"]} {self.config["method"]} {self._config["app"]} -l {self.temp_file} {self._config["pause"]}'
             outfile = self.files['nsuserdefaults-retrieve']
             execute_frida_command(self.config, self.temp_file, outfile, True)
+
+        found = find_command('frida', self.config["app"])
+        if not found:
+            exec_new()
+        else:
+            exec_running()
+
+    def bypass_flutter_ssl(self):
+        def exec_running():
+            self.copy_file("ssl-flutter")
+            print(Fore.GREEN + '[+] The command was executed successfully!' + Fore.RESET)
+
+        def exec_new():
+            self.copy_file("ssl-flutter")
+            outfile = self.files['ssl-flutter']
+            execute_frida_command(self.config, self.temp_file, outfile, False, "Attached SSL Pinning on Flutter")
 
         found = find_command('frida', self.config["app"])
         if not found:

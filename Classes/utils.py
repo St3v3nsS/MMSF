@@ -186,7 +186,7 @@ def execute_command(cmd, stdout, tool):
         print(Fore.RED + '[-] Some error occured! Try again!' + Fore.RESET)
         return False
 
-def execute_frida_command(config_file, script_file, stdout, modify=False):
+def execute_frida_command(config_file, script_file, stdout, modify=False, confirmation="Attached"):
     print(Fore.YELLOW + "[*] Command used: frida {} {} {} -l {}".format(
         config_file["mode"], config_file["method"], config_file["app"], script_file) + Fore.RESET)
     print(Fore.YELLOW + "[*] Logging to: " + stdout + Fore.RESET)
@@ -263,7 +263,7 @@ def execute_frida_command(config_file, script_file, stdout, modify=False):
         retry_count = 0
         while retry_count < max_retries:
             with open(stdout, 'r') as f:
-                if any("Attached" in x for x in f.readlines()):
+                if any(confirmation in x for x in f.readlines()):
                     print(Fore.GREEN + '[+] Command executed successfully' + Fore.RESET)
                     return True
             time.sleep(1)

