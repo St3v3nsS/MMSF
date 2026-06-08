@@ -1,3 +1,4 @@
+import os
 import readline
 import shlex
 from Classes.constants import Constants
@@ -303,13 +304,130 @@ class SSLPinning:
                     if execute(value) == 2:
                         return 1 
 
+        def handle_frida_v2():
+            frida_v2_data = {
+                "mode":       "-U",
+                "app":        "",
+                "host":       "127.0.0.1",
+                "method":     "-f",
+                "proxy_host": "127.0.0.1",
+                "proxy_port": "8080",
+                "cert_pem":   "",
+            }
+
+            set_data = ["app", "mode", "host", "method", "proxy_host", "proxy_port", "cert_pem"]
+
+            def data_completer(text, state):
+                options = [i for i in set_data if i.startswith(text)]
+                return options[state] if state < len(options) else None
+
+            def cmd_completer(text, state):
+                options = [i for i in Constants.MMSF_COMMANDS.value if i.startswith(text)]
+                return options[state] if state < len(options) else None
+
+            def _resolve_cert(raw):
+                raw = raw.strip()
+                if os.path.isfile(raw):
+                    with open(raw, 'r') as f:
+                        return f.read().strip()
+                return raw
+
+            def _run(data):
+                if not data["app"]:
+                    print(Fore.RED + '[-] APP is required.' + Fore.RESET)
+                    return 0
+                if not data["cert_pem"]:
+                    print(Fore.RED + '[-] CERT_PEM is required (PEM string or path to .pem file).' + Fore.RESET)
+                    return 0
+                cert = _resolve_cert(data["cert_pem"])
+                mmsf._frida.config = {
+                    "mode":   data["mode"],
+                    "app":    data["app"],
+                    "host":   data["host"],
+                    "method": data["method"],
+                    "pause":  "",
+                }
+                try:
+                    return mmsf.bypass_ssl_frida_v2(data["proxy_host"], data["proxy_port"], cert)
+                except Exception as e:
+                    print(Fore.RED + '[-] ' + str(e) + Fore.RESET)
+                    return 0
+
+            def _show(data):
+                print_show_table([
+                    {"name": "APP",        "value": data["app"],
+                     "description": "Target package name: com.example.android"},
+                    {"name": "PROXY_HOST", "value": data["proxy_host"],
+                     "description": "Intercepting proxy IP. Default: 127.0.0.1", "required": False},
+                    {"name": "PROXY_PORT", "value": data["proxy_port"],
+                     "description": "Intercepting proxy port. Default: 8080",    "required": False},
+                    {"name": "CERT_PEM",   "value": "(set)" if data["cert_pem"] else "(not set)",
+                     "description": "CA certificate PEM string or path to .pem/.crt file"},
+                    {"name": "MODE",       "value": "SERIAL" if data["mode"] == "-U" else "REMOTE",
+                     "description": "Serial or Remote. Default: SERIAL",          "required": False},
+                    {"name": "METHOD",     "value": "SPAWN" if data["method"] == "-f" else "FRONTMOST",
+                     "description": "Attach method. Default: SPAWN",              "required": False},
+                    {"name": "HOST",       "value": data["host"],
+                     "description": "Frida remote host (MODE=REMOTE only)",       "required": False},
+                ])
+                return 0
+
+            while True:
+                readline.set_completer(cmd_completer)
+                value = shlex.split(input('mmsf (sslpinning/frida_v2)> '))
+                if not value:
+                    continue
+                cmd = value[0].lower()
+
+                if cmd == "set":
+                    while True:
+                        readline.set_completer(data_completer)
+                        inpt = shlex.split(input('mmsf (sslpinning/frida_v2/set)> '))
+                        if len(inpt) > 1:
+                            k, *args = inpt
+                        elif len(inpt) == 1:
+                            k, args = inpt[0], None
+                        else:
+                            continue
+                        kl = k.lower()
+                        if kl == "app" and args:
+                            frida_v2_data["app"] = args[0]
+                        elif kl == "proxy_host" and args:
+                            frida_v2_data["proxy_host"] = args[0]
+                        elif kl == "proxy_port" and args:
+                            frida_v2_data["proxy_port"] = args[0]
+                        elif kl == "cert_pem" and args:
+                            frida_v2_data["cert_pem"] = " ".join(args)
+                        elif kl == "mode" and args:
+                            frida_v2_data["mode"] = "-U" if args[0].upper() in ("SERIAL", "USB") else "-R"
+                        elif kl == "method" and args:
+                            frida_v2_data["method"] = "-f" if args[0].upper() == "SPAWN" else "-F"
+                        elif kl == "host" and args:
+                            frida_v2_data["host"] = args[0]
+                        elif kl == "run":
+                            _run(frida_v2_data)
+                            break
+                        else:
+                            break
+                elif cmd == "show":
+                    _show(frida_v2_data)
+                elif cmd == "run":
+                    if _run(frida_v2_data) == 2:
+                        return 1
+                elif cmd == "exit":
+                    quit_app()
+                elif cmd == "back":
+                    back()
+                    return 1
+
         def handle_burp_ca():
             pass
 
-        modules = ["objection", "frida", "flutter", "burp_ca", "network_config"]
+        modules = ["objection", "frida", "frida_v2", "flutter", "burp_ca", "network_config"]
         descriptions = [
-            "Bypass the SSL Pinning using Objection", 
+            "Bypass the SSL Pinning using Objection",
             "Frida Script to bypass the SSL Pinning",
+            "Frida v2 — httptoolkit multi-script SSL bypass (proxy + cert injection + unpinning)",
             "Patch Flutter Applications",
             "Push the Burp CA to the Trusted ROOT CAs",
             "Modify the network_security_config.xml file"]
@@ -341,6 +459,8 @@ class SSLPinning:
                     handle_objection()
                 elif action == "frida":
                     handle_frida()
+                elif action == "frida_v2":
+                    handle_frida_v2()
                 elif action == "flutter":
                     handle_flutter()
                 elif action == "burp_ca":

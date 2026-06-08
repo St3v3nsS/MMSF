@@ -186,43 +186,140 @@ def execute_command(cmd, stdout, tool):
         print(Fore.RED + '[-] Some error occured! Try again!' + Fore.RESET)
         return False
 
+# def execute_frida_command(config_file, script_file, stdout, modify=False, confirmation="Attached"):
+#     print(Fore.YELLOW + "[*] Command used: frida {} {} {} -l {}".format(
+#         config_file["mode"], config_file["method"], config_file["app"], script_file) + Fore.RESET)
+#     print(Fore.YELLOW + "[*] Logging to: " + stdout + Fore.RESET)
+
+#     try:
+#         # Get device
+#         if config_file["mode"] == "-U":
+#             device = frida.get_usb_device()
+#         else:
+#             subprocess.call(f'{Constants.ADB.value} connect {config_file["host"]}')
+#             device = frida.get_remote_device()
+
+#         # Clear previous log file
+#         open(stdout, 'w').close()
+
+#         # Handle process spawning/attachment
+#         if config_file["method"] == "-f":
+#             print(Fore.YELLOW + "[*] Spawning application..." + Fore.RESET)
+#             pid = device.spawn([config_file["app"]])
+#             session = device.attach(pid)
+            
+#             # Set up script before resuming
+#             script = session.create_script(open(script_file).read())
+            
+#             def on_message(msg, _data):
+#                 if msg.get('type') == 'error':
+#                     print(Fore.RED + f"[-] Script Error: {msg['description']}" + Fore.RESET)
+#                     return
+#                 with open(stdout, 'a') as f:
+#                     f.writelines(str(msg.get('payload', '')))
+#                     f.write('\n')
+
+#             script.on("message", on_message)
+#             print(Fore.YELLOW + "[*] Loading script..." + Fore.RESET)
+#             script.load()
+            
+#             print(Fore.YELLOW + "[*] Resuming application..." + Fore.RESET)
+#             device.resume(pid)
+#         else:
+#             print(Fore.YELLOW + "[*] Attaching to existing process..." + Fore.RESET)
+#             target_app = device.get_frontmost_application()
+#             if not target_app:
+#                 print(Fore.RED + "[-] Target application not found!" + Fore.RESET)
+#                 return False
+            
+#             session = device.attach(target_app.pid)
+#             script = session.create_script(open(script_file).read())
+            
+#             def on_message(msg, _data):
+#                 if msg.get('type') == 'error':
+#                     print(Fore.RED + f"[-] Script Error: {msg['description']}" + Fore.RESET)
+#                     return
+#                 with open(stdout, 'a') as f:
+#                     f.writelines(str(msg.get('payload', '')))
+#                     f.write('\n')
+
+#             script.on("message", on_message)
+#             script.load()
+
+#         print(Fore.YELLOW + "[*] Waiting for script initialization..." + Fore.RESET)
+#         time.sleep(2)  # Give the script time to initialize
+
+#         # Handle NSUserDefaults modification if needed
+#         if modify:
+#             print(Fore.YELLOW + "[*] Sending modification message..." + Fore.RESET)
+#             script.post({
+#                 'type': 'start', 
+#                 'key': config_file["key"], 
+#                 'value': config_file["value"]
+#             })
+
+#         # Wait for confirmation
+#         max_retries = 10
+#         retry_count = 0
+#         while retry_count < max_retries:
+#             with open(stdout, 'r') as f:
+#                 if any(confirmation in x for x in f.readlines()):
+#                     print(Fore.GREEN + '[+] Command executed successfully' + Fore.RESET)
+#                     return True
+#             time.sleep(1)
+#             retry_count += 1
+
+#         print(Fore.RED + '[-] Timeout waiting for script attachment confirmation' + Fore.RESET)
+#         return False
+
+#     except frida.ServerNotRunningError:
+#         print(Fore.RED + "[-] Frida server is not running on the target device" + Fore.RESET)
+#         return False
+#     except frida.ProcessNotFoundError:
+#         print(Fore.RED + "[-] Target process not found" + Fore.RESET)
+#         return False
+#     except Exception as e:
+#         print(Fore.RED + f"[-] Error: {str(e)}" + Fore.RESET)
+#         return False
+
+# import threading  # already imported in utils.py
+
 def execute_frida_command(config_file, script_file, stdout, modify=False, confirmation="Attached"):
     print(Fore.YELLOW + "[*] Command used: frida {} {} {} -l {}".format(
         config_file["mode"], config_file["method"], config_file["app"], script_file) + Fore.RESET)
     print(Fore.YELLOW + "[*] Logging to: " + stdout + Fore.RESET)
 
     try:
-        # Get device
         if config_file["mode"] == "-U":
             device = frida.get_usb_device()
         else:
             subprocess.call(f'{Constants.ADB.value} connect {config_file["host"]}')
             device = frida.get_remote_device()
 
-        # Clear previous log file
         open(stdout, 'w').close()
 
-        # Handle process spawning/attachment
+        # ── NEW: one Event per run — immune to stale callbacks ──────────────
+        confirmed = threading.Event()
+
+        def on_message(msg, _data):
+            if msg.get('type') == 'error':
+                print(Fore.RED + f"[-] Script Error: {msg['description']}" + Fore.RESET)
+                return
+            payload = str(msg.get('payload', ''))
+            with open(stdout, 'a') as f:
+                f.write(payload + '\n')
+            # Only this run's on_message can set this run's confirmed event
+            if confirmation in payload:
+                confirmed.set()
+
         if config_file["method"] == "-f":
             print(Fore.YELLOW + "[*] Spawning application..." + Fore.RESET)
             pid = device.spawn([config_file["app"]])
             session = device.attach(pid)
-            
-            # Set up script before resuming
             script = session.create_script(open(script_file).read())
-            
-            def on_message(msg, _data):
-                if msg.get('type') == 'error':
-                    print(Fore.RED + f"[-] Script Error: {msg['description']}" + Fore.RESET)
-                    return
-                with open(stdout, 'a') as f:
-                    f.writelines(str(msg.get('payload', '')))
-                    f.write('\n')
-
             script.on("message", on_message)
             print(Fore.YELLOW + "[*] Loading script..." + Fore.RESET)
             script.load()
-            
             print(Fore.YELLOW + "[*] Resuming application..." + Fore.RESET)
             device.resume(pid)
         else:
@@ -231,43 +328,23 @@ def execute_frida_command(config_file, script_file, stdout, modify=False, confir
             if not target_app:
                 print(Fore.RED + "[-] Target application not found!" + Fore.RESET)
                 return False
-            
             session = device.attach(target_app.pid)
             script = session.create_script(open(script_file).read())
-            
-            def on_message(msg, _data):
-                if msg.get('type') == 'error':
-                    print(Fore.RED + f"[-] Script Error: {msg['description']}" + Fore.RESET)
-                    return
-                with open(stdout, 'a') as f:
-                    f.writelines(str(msg.get('payload', '')))
-                    f.write('\n')
-
             script.on("message", on_message)
             script.load()
 
-        print(Fore.YELLOW + "[*] Waiting for script initialization..." + Fore.RESET)
-        time.sleep(2)  # Give the script time to initialize
-
-        # Handle NSUserDefaults modification if needed
         if modify:
             print(Fore.YELLOW + "[*] Sending modification message..." + Fore.RESET)
             script.post({
-                'type': 'start', 
-                'key': config_file["key"], 
+                'type': 'start',
+                'key': config_file["key"],
                 'value': config_file["value"]
             })
 
-        # Wait for confirmation
-        max_retries = 10
-        retry_count = 0
-        while retry_count < max_retries:
-            with open(stdout, 'r') as f:
-                if any(confirmation in x for x in f.readlines()):
-                    print(Fore.GREEN + '[+] Command executed successfully' + Fore.RESET)
-                    return True
-            time.sleep(1)
-            retry_count += 1
+        # ── wait on the event, not on a file ────────────────────────────────
+        if confirmed.wait(timeout=10):
+            print(Fore.GREEN + '[+] Command executed successfully' + Fore.RESET)
+            return True
 
         print(Fore.RED + '[-] Timeout waiting for script attachment confirmation' + Fore.RESET)
         return False
@@ -281,7 +358,6 @@ def execute_frida_command(config_file, script_file, stdout, modify=False, confir
     except Exception as e:
         print(Fore.RED + f"[-] Error: {str(e)}" + Fore.RESET)
         return False
-    
 
 def find_command(cmd, search_word):
     found = False
@@ -326,3 +402,143 @@ def mkdir(path):
             os.makedirs(path, exist_ok=True)
         except OSError as e:
             print(Fore.LIGHTBLUE_EX + '[DEBUG] ' + e + Fore.RESET)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Background Frida execution — session stays alive, log is tailed in a thread
+# ─────────────────────────────────────────────────────────────────────────────
+
+def execute_frida_command_bg(config_file, script_file, stdout, active_sessions,
+                              session_key, confirmation="Attached"):
+    """
+    Identical spawn/attach flow as execute_frida_command, but:
+      - stores (session, script) in active_sessions[session_key] so the
+        Python GC never kills the frida session.
+      - starts a daemon tail-thread that prints every new log line live.
+      - returns immediately after confirmation so MMSF stays interactive.
+    """
+    print(Fore.YELLOW + "[*] Command used: frida {} {} {} -l {}".format(
+        config_file["mode"], config_file["method"], config_file["app"],
+        script_file) + Fore.RESET)
+    print(Fore.YELLOW + "[*] Live log  → " + stdout + Fore.RESET)
+
+    try:
+        if config_file["mode"] == "-U":
+            device = frida.get_usb_device()
+        else:
+            subprocess.call(f'{Constants.ADB.value} connect {config_file["host"]}')
+            device = frida.get_remote_device()
+
+        open(stdout, 'w').close()           # clear previous log
+
+        # ── attach / spawn ──────────────────────────────────────────────────
+        if config_file["method"] == "-f":
+            print(Fore.YELLOW + "[*] Spawning application..." + Fore.RESET)
+            pid     = device.spawn([config_file["app"]])
+            session = device.attach(pid)
+        else:
+            print(Fore.YELLOW + "[*] Attaching to frontmost process..." + Fore.RESET)
+            target_app = device.get_frontmost_application()
+            if not target_app:
+                print(Fore.RED + "[-] Target application not found!" + Fore.RESET)
+                return False
+            session = device.attach(target_app.pid)
+            pid     = None
+
+        # ── load script ─────────────────────────────────────────────────────
+        script = session.create_script(open(script_file).read())
+
+        def on_message(msg, _data):
+            if msg.get('type') == 'error':
+                print(Fore.RED + f"[-] Frida script error: {msg['description']}" + Fore.RESET)
+                return
+            payload = msg.get('payload', '')
+            if payload:
+                with open(stdout, 'a') as f:
+                    f.write(str(payload) + '\n')
+
+        script.on("message", on_message)
+        print(Fore.YELLOW + "[*] Loading script..." + Fore.RESET)
+        script.load()
+
+        if pid is not None:
+            print(Fore.YELLOW + "[*] Resuming application..." + Fore.RESET)
+            device.resume(pid)
+
+        # ── wait for confirmation ────────────────────────────────────────────
+        time.sleep(2)
+        confirmed = False
+        for _ in range(12):
+            try:
+                with open(stdout, 'r') as f:
+                    if any(confirmation in line for line in f):
+                        confirmed = True
+                        break
+            except Exception:
+                pass
+            time.sleep(1)
+
+        if not confirmed:
+            print(Fore.RED + '[-] Timeout waiting for script confirmation.' + Fore.RESET)
+            return False
+
+        # ── keep alive: store references ─────────────────────────────────────
+        # As long as active_sessions[session_key] is alive, frida won't detach.
+        stop_evt = threading.Event()
+        active_sessions[session_key]              = (session, script)
+        active_sessions[session_key + '_stop']    = stop_evt
+
+        # ── tail thread: print every new log line ────────────────────────────
+        def _tail(log_path, stop_event, label):
+            try:
+                with open(log_path, 'r') as f:
+                    f.seek(0, 2)                   # jump to end of existing content
+                    while not stop_event.is_set():
+                        line = f.readline()
+                        if line and line.strip():
+                            print(Fore.CYAN + f'[frida:{label}] ' + line.rstrip() + Fore.RESET)
+                        else:
+                            time.sleep(0.3)
+            except Exception:
+                pass
+
+        t = Thread(target=_tail, args=(stdout, stop_evt, session_key), daemon=True)
+        t.start()
+        active_sessions[session_key + '_tail'] = t
+
+        print(Fore.GREEN + f'[+] Frida session [{session_key}] is running in background.' + Fore.RESET)
+        print(Fore.GREEN + f'[+] MMSF is fully interactive — hooks print here as they fire.' + Fore.RESET)
+        return True
+
+    except frida.ServerNotRunningError:
+        print(Fore.RED + "[-] Frida server is not running on the target device." + Fore.RESET)
+        return False
+    except frida.ProcessNotFoundError:
+        print(Fore.RED + "[-] Target process not found." + Fore.RESET)
+        return False
+    except Exception as e:
+        print(Fore.RED + f"[-] Error: {str(e)}" + Fore.RESET)
+        return False
+
+
+def stop_frida_session(active_sessions, session_key):
+    """Gracefully stop a background frida session started with execute_frida_command_bg."""
+    stop_evt = active_sessions.pop(session_key + '_stop', None)
+    if stop_evt:
+        stop_evt.set()
+    active_sessions.pop(session_key + '_tail', None)
+
+    pair = active_sessions.pop(session_key, None)
+    if pair:
+        session, script = pair
+        try:
+            script.unload()
+        except Exception:
+            pass
+        try:
+            session.detach()
+        except Exception:
+            pass
+        print(Fore.GREEN + f'[+] Frida session [{session_key}] detached and stopped.' + Fore.RESET)
+    else:
+        print(Fore.YELLOW + f'[*] No active background session with key [{session_key}].' + Fore.RESET)

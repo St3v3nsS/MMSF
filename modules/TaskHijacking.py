@@ -1,6 +1,6 @@
 import readline
 import shlex
-import os
+import threading
 import xml.etree.ElementTree as ET
 
 from colorama import Fore
@@ -150,11 +150,100 @@ class TaskHijacking:
                     if execute(value, data) == 2:
                         return 1
 
-        # ── top-level menu ────────────────────────────────────────────────────
-        modules = ["detect", "generate"]
+                # ── frida_hook ────────────────────────────────────────────────────────
+        def handle_frida_hook():
+            data = {
+                "mode":   "-U",
+                "app":    "",
+                "host":   "127.0.0.1",
+                "pause":  "",
+                "method": "-f",
+                "key":    "",
+                "value":  "",
+            }
+
+            set_data = ["app", "mode", "host", "method"]
+
+            def data_completer(text, state):
+                options = [i for i in set_data if i.startswith(text)]
+                if state < len(options):
+                    return options[state]
+                return None
+
+            def cmd_completer(text, state):
+                options = [i for i in Constants.MMSF_COMMANDS.value if i.startswith(text)]
+                if state < len(options):
+                    return options[state]
+                return None
+
+            while True:
+                readline.set_completer(cmd_completer)
+                value = shlex.split(input('mmsf (taskhijacking/frida_hook)> '))
+                if not value:
+                    continue
+                cmd = value[0].lower()
+
+                if cmd == "set":
+                    while True:
+                        readline.set_completer(data_completer)
+                        inpt = shlex.split(input('mmsf (taskhijacking/frida_hook/set)> '))
+                        if len(inpt) > 1:
+                            k, *args = inpt
+                        elif len(inpt) == 1:
+                            k, args = inpt[0], None
+                        else:
+                            continue
+
+                        kl = k.lower()
+                        if kl == "app" and args:
+                            data["app"] = args[0]
+                        elif kl == "mode" and args:
+                            data["mode"] = "-U" if args[0].upper() == "SERIAL" else "-R"
+                        elif kl == "host" and args:
+                            data["host"] = args[0]
+                        elif kl == "method" and args:
+                            data["method"] = "-f" if args[0].upper() == "SPAWN" else "-F"
+                        else:
+                            break
+
+                elif cmd == "show":
+                    from Classes.utils import print_show_table
+                    print_show_table([
+                        {"name": "APP",    "value": data["app"],
+                         "description": "Target package name: com.mmsf.taskhijackingvictim"},
+                        {"name": "MODE",   "value": "SERIAL" if data["mode"] == "-U" else "REMOTE",
+                         "description": "Serial or Remote. Default: SERIAL", "required": False},
+                        {"name": "HOST",   "value": data["host"],
+                         "description": "Host if MODE=REMOTE. Default: 127.0.0.1", "required": False},
+                        {"name": "METHOD", "value": "SPAWN" if data["method"] == "-f" else "FRONTMOST",
+                         "description": "Attach method. Default: SPAWN", "required": False},
+                    ])
+
+                elif cmd == "run":
+                    if not data["app"]:
+                        print(Fore.RED + "[-] Set APP first!" + Fore.RESET)
+                        continue
+                    try:
+                        mmsf.hook_task_hijacking(cmd, data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] ' + str(e) + Fore.RESET)
+
+                elif cmd == "stop":
+                    try:
+                        mmsf.hook_task_hijacking("stop", data)
+                    except Exception as e:
+                        print(Fore.RED + '[-] ' + str(e) + Fore.RESET)
+
+                elif cmd in ("back", "exit"):
+                    back()
+                    return 1
+
+       # ── top-level menu ────────────────────────────────────────────────────
+        modules      = ["detect", "generate", "frida_hook"]
         descriptions = [
             "Scan AndroidManifest.xml for singleTask + taskAffinity misconfigs (StrandHogg 1.0)",
-            "Generate malicious APK manifest + Java payload + ADB trigger"
+            "Generate malicious APK manifest + Java payload + ADB trigger",
+            "Hook victim app with Frida — live activity lifecycle monitor (runs in background)",
         ]
 
         while True:
@@ -185,6 +274,8 @@ class TaskHijacking:
                     handle_detect()
                 elif action == "generate":
                     handle_generate()
+                elif action == "frida_hook":
+                    handle_frida_hook()
             elif input_val[0].lower() == "back":
                 back()
                 break

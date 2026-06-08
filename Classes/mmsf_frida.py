@@ -6,7 +6,7 @@ import subprocess
 from colorama import Fore
 from subprocess import DEVNULL, PIPE
 from Classes.constants import Constants
-from Classes.utils import execute_frida_command, find_command
+from Classes.utils import execute_frida_command, execute_frida_command_bg, stop_frida_session, find_command
 
 class Frida:
     _config: dict
@@ -43,15 +43,18 @@ class Frida:
         }
         self.temp_dir = tempfile.mkdtemp()
         self.temp_file = tempfile.mkstemp(dir=self.temp_dir, suffix=".js")[1]
-        self.files = {'ssl-android': os.path.join(self.temp_dir,'frida-ssl-android.log'),
-                      'ssl-ios': os.path.join(self.temp_dir,'frida-ssl-ios.log'), 
-                      'root-android': os.path.join(self.temp_dir,'frida-root-android.log'), 
-                      'biometrics-ios': os.path.join(self.temp_dir,'frida-biometrics-ios.log'),
-                      'biometrics-android': os.path.join(self.temp_dir,'frida-biometrics-android.log'),
-                      'jailbreak-ios': os.path.join(self.temp_dir,'frida-jailbreak-ios.log'),
-                      'nsuserdefaults-modify': os.path.join(self.temp_dir,'frida-nsuserdefaults-modify.log'),
-                      'nsuserdefaults-retrieve': os.path.join(self.temp_dir,'frida-nsuserdefaults-retrieve.log'),
-                      'ssl-flutter': os.path.join(self.temp_dir, 'frida-ssl-flutter.log'),
+        self.files = {
+            'ssl-android':            os.path.join(self.temp_dir, 'frida-ssl-android.log'),
+            'ssl-ios':                os.path.join(self.temp_dir, 'frida-ssl-ios.log'),
+            'root-android':           os.path.join(self.temp_dir, 'frida-root-android.log'),
+            'biometrics-ios':         os.path.join(self.temp_dir, 'frida-biometrics-ios.log'),
+            'biometrics-android':     os.path.join(self.temp_dir, 'frida-biometrics-android.log'),
+            'jailbreak-ios':          os.path.join(self.temp_dir, 'frida-jailbreak-ios.log'),
+            'nsuserdefaults-modify':  os.path.join(self.temp_dir, 'frida-nsuserdefaults-modify.log'),
+            'nsuserdefaults-retrieve':os.path.join(self.temp_dir, 'frida-nsuserdefaults-retrieve.log'),
+            'ssl-flutter':            os.path.join(self.temp_dir, 'frida-ssl-flutter.log'),
+            'task-hijacking':         os.path.join(self.temp_dir, 'frida-task-hijacking.log'),  # ← NEW
+            'ssl-pinning-v2':         os.path.join(self.temp_dir, 'frida-ssl-pinning-v2.log'),
         }
         
         for file in self.files.keys():
@@ -109,6 +112,8 @@ class Frida:
             print(Fore.RED + file + Fore.RESET)
         elif type == "ssl-flutter":
             file = os.path.join(path, 'disable_flutter_tls.js')
+        elif type == "task_hijacking":
+            file = os.path.join(path, 'hook_task_hijacking.js')
         else:
             file = tempfile.mkstemp(dir=self.temp_dir, suffix=".js")
         
@@ -292,3 +297,138 @@ class Frida:
             exec_new()
         else:
             exec_running()
+
+    @staticmethod
+    def _normalize_cert(cert_pem: str) -> str:
+        """
+        Accept any of:
+          - A file path to a .pem / .crt file
+          - A full PEM string (with -----BEGIN/END CERTIFICATE----- headers)
+          - Raw base64 body only
+        Returns ONLY the raw base64 body (no headers, no blank lines).
+        """
+        raw = cert_pem.strip()
+        if os.path.isfile(raw):
+            with open(raw, 'r') as f:
+                raw = f.read().strip()
+        lines = []
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line or line.startswith('-----'):
+                continue
+            lines.append(line)
+        return '\n'.join(lines)
+
+    def copy_file_v2(self, proxy_host, proxy_port, cert_pem):
+        """
+        Merge config.js (with injected values) + all hook scripts into
+        self.temp_file, ready for: frida -U -l <temp_file> -f <package>
+        """
+        scripts_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'Frida_Scripts', 'sslpinning'
+        )
+
+        # Normalise cert → raw base64 body, then re-wrap cleanly
+        b64_body = self._normalize_cert(cert_pem)
+        if not b64_body:
+            raise ValueError('[!] CERT_PEM is empty or could not be parsed.')
+        clean_pem = f'-----BEGIN CERTIFICATE-----\n{b64_body}\n-----END CERTIFICATE-----'
+        print(Fore.BLUE + f'[*] Certificate loaded ({len(b64_body)} base64 chars)' + Fore.RESET)
+
+        # Reset temp file
+        open(self.temp_file, 'w').close()
+
+        # 1. Inject proxy/cert values into config.js
+        config_path = os.path.join(scripts_dir, 'config.js')
+        with open(config_path, 'r') as f:
+            config_src = f.read()
+
+        # Replace the entire template-literal PEM block (headers + placeholder)
+        import re
+        config_src = re.sub(
+            r'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',
+            clean_pem,
+            config_src,
+            flags=re.DOTALL
+        )
+        config_src = config_src.replace(
+            "const PROXY_HOST = '127.0.0.1';",
+            f"const PROXY_HOST = '{proxy_host}';"
+        ).replace(
+            "const PROXY_PORT = 8000;",
+            f"const PROXY_PORT = {proxy_port};"
+        )
+
+        with open(self.temp_file, 'a') as out:
+            out.write(config_src)
+            out.write('\n\n')
+
+        # 2. Append hook scripts in the correct load order
+        hook_scripts = [
+            'native-connect-hook.js',
+            'native-tls-hook.js',
+            os.path.join('android', 'android-proxy-override.js'),
+            os.path.join('android', 'android-system-certificate-injection.js'),
+            os.path.join('android', 'android-certificate-unpinning.js'),
+            os.path.join('android', 'android-certificate-unpinning-fallback.js'),
+        ]
+
+        with open(self.temp_file, 'a') as out:
+            for script in hook_scripts:
+                script_path = os.path.join(scripts_dir, script)
+                print(Fore.YELLOW + f'[*] Appending: {script}' + Fore.RESET)
+                with open(script_path, 'r') as f:
+                    out.write(f'\n// \u2500\u2500 {script} \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n')
+                    out.write(f.read())
+                    out.write('\n')
+
+    def bypass_ssl_v2(self, proxy_host, proxy_port, cert_pem):
+        """
+        SSL Pinning bypass using the httptoolkit multi-script stack.
+        Equivalent to running:
+          frida -U -l config.js -l native-connect-hook.js -l native-tls-hook.js
+                -l android/android-proxy-override.js
+                -l android/android-system-certificate-injection.js
+                -l android/android-certificate-unpinning.js
+                -l android/android-certificate-unpinning-fallback.js
+                -f <package>
+        All scripts are merged into a single temp file and loaded as one.
+        """
+        print(Fore.YELLOW + '[*] Building combined SSL Pinning v2 script...' + Fore.RESET)
+        self.copy_file_v2(proxy_host, proxy_port, cert_pem)
+        outfile = self.files['ssl-pinning-v2']
+        execute_frida_command(self.config, self.temp_file, outfile)
+
+    def hook_task_hijacking(self):
+        """
+        Spawn/attach to the victim app, load the task-hijacking hook script,
+        and keep the frida session running in background so MMSF stays usable.
+        New activity lifecycle events print live as they happen.
+        """
+        def exec_new():
+            self.copy_file("task_hijacking")
+            outfile = self.files['task-hijacking']
+            execute_frida_command_bg(
+                self.config,
+                self.temp_file,
+                outfile,
+                self._active_sessions,
+                session_key='task-hijacking',
+                confirmation='[MMSF] Task Hijacking hooks loaded'
+            )
+
+        def exec_running():
+            # frida already attached to this app — just hot-reload the extra script
+            self.copy_file("task_hijacking")
+            print(Fore.GREEN + '[+] Task-hijacking hooks appended to live frida session.' + Fore.RESET)
+
+        found = find_command('frida', self.config["app"])
+        if not found:
+            exec_new()
+        else:
+            exec_running()
+
+    def stop_task_hijacking(self):
+        """Detach the background task-hijacking frida session."""
+        stop_frida_session(self._active_sessions, 'task-hijacking')
